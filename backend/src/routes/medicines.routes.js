@@ -1,0 +1,14 @@
+const router = require('express').Router();
+const { verifyToken } = require('../middleware/auth.middleware');
+const c = require('../controllers/medicines.controller');
+
+router.use(verifyToken);
+
+router.get('/', c.getAll);
+router.get('/:id', c.getById);
+router.get('/:id/stock-history', c.getStockHistory);
+router.post('/', c.create);
+router.put('/:id', c.update);
+router.delete('/:id', c.remove);
+
+module.exports = router;
