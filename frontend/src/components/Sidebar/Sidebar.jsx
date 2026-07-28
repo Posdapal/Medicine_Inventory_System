@@ -36,20 +36,6 @@ const Sidebar = () => {
     },
 
     {
-      name: "Patients",
-      path: "/patients",
-      icon: <FaUserInjured />,
-      color: "text-green-500",
-    },
-
-    {
-      name: "Medicines",
-      path: "/medicines",
-      icon: <FaCapsules />,
-      color: "text-purple-500",
-    },
-
-    {
       name: "Suppliers",
       path: "/suppliers",
       icon: <FaTruck />,
@@ -71,24 +57,10 @@ const Sidebar = () => {
     },
 
     {
-      name: "Prescriptions",
-      path: "/prescriptions",
-      icon: <FaFilePrescription />,
-      color: "text-cyan-500",
-    },
-
-    {
       name: "Reports",
       path: "/reports",
       icon: <FaChartBar />,
       color: "text-indigo-500",
-    },
-
-    {
-      name: "User Management",
-      path: "/users",
-      icon: <FaUsersCog />,
-      color: "text-yellow-500",
     },
 
     {
