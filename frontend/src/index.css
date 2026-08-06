@@ -1,3 +1,90 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #334155 #0f172a;
+  }
+
+  body {
+    @apply m-0 min-w-[320px] bg-slate-950 font-sans text-slate-100 antialiased;
+    transition: background-color 180ms ease, color 180ms ease;
+  }
+
+  button, input, select {
+    font: inherit;
+  }
+}
+
+/* Light-mode compatibility for the existing inventory UI. Keeping these
+   mappings centralized lets legacy modules and shared components switch
+   themes together without changing their business logic. */
+html:not(.dark) body,
+html:not(.dark) [class~="bg-slate-950"] {
+  background-color: #f4f7fb !important;
+  color: #172033 !important;
+}
+
+html:not(.dark) [class*="bg-slate-950/"] {
+  background-color: rgba(244, 247, 251, 0.92) !important;
+}
+
+html:not(.dark) [class~="bg-slate-900"],
+html:not(.dark) [class*="bg-slate-900/"] {
+  background-color: rgba(255, 255, 255, 0.96) !important;
+}
+
+html:not(.dark) [class~="bg-slate-800"],
+html:not(.dark) [class*="bg-slate-800/"] {
+  background-color: #eef2f7 !important;
+}
+
+html:not(.dark) [class*="bg-[#0B1220]"],
+html:not(.dark) [class*="bg-[#070B12]"] {
+  background-color: #f4f7fb !important;
+}
+
+html:not(.dark) [class*="bg-[#0F1626]"],
+html:not(.dark) [class*="bg-[#111A2C]"],
+html:not(.dark) [class*="bg-[#141E33]"] {
+  background-color: #ffffff !important;
+}
+
+html:not(.dark) [class*="border-[#1E2A45]"],
+html:not(.dark) [class*="border-slate-800"],
+html:not(.dark) [class*="border-slate-700"] {
+  border-color: #d9e1ec !important;
+}
+
+html:not(.dark) [class*="text-[#E7ECF6]"],
+html:not(.dark) [class*="text-[#D7DEEB]"],
+html:not(.dark) [class*="text-[#C9D2E3]"],
+html:not(.dark) [class*="text-slate-100"],
+html:not(.dark) [class*="text-slate-200"] {
+  color: #172033 !important;
+}
+
+html:not(.dark) [class*="text-[#8B96AE]"],
+html:not(.dark) [class*="text-[#7D8AA3]"],
+html:not(.dark) [class*="text-slate-300"],
+html:not(.dark) [class*="text-slate-400"] {
+  color: #59677d !important;
+}
+
+html:not(.dark) [class*="text-[#5D6B85]"],
+html:not(.dark) [class*="text-slate-500"],
+html:not(.dark) [class*="text-slate-600"] {
+  color: #738198 !important;
+}
+
+html:not(.dark) input,
+html:not(.dark) select,
+html:not(.dark) textarea {
+  color: #172033;
+}
+
+html:not(.dark) * {
+  scrollbar-color: #aeb9c8 #eef2f7;
+}

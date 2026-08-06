@@ -1,18 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { reportsApi } from "../../api/endpoints";
 import Swal from 'sweetalert2';
-
-function PageHeader({ title, subtitle, action }) {
-  return (
-    <div className="flex items-start justify-between mb-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-[#E7ECF6] tracking-tight">{title}</h1>
-        {subtitle && <p className="text-sm text-[#8B96AE] mt-1">{subtitle}</p>}
-      </div>
-      {action}
-    </div>
-  );
-}
+import { PageHeader } from "../../components/ui/Common";
 
 function Card({ children, className = "" }) {
   return <div className={`bg-[#141E33] border border-[#1E2A45] rounded-xl ${className}`}>{children}</div>;
@@ -200,8 +189,8 @@ function Reports() {
 };
 
   return (
-    <div className="p-6 space-y-6">
-      <PageHeader title="Reports" subtitle="Generate and revisit saved report snapshots" />
+    <div className="space-y-6">
+      <PageHeader title="Reports" subtitle="Reports / Overview" description="Generate and revisit saved report snapshots." />
 
       <Card className="p-5 mb-5">
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">

@@ -7,7 +7,7 @@ const API_BASE_URL =
   (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_URL) ||
   "http://localhost:8081/api";
 
-const TOKEN_KEY = "clinic_erp_token";
+const TOKEN_KEY = "medicine_inventory_token";
 
 const axiosClient = axios.create({
   baseURL: API_BASE_URL,
@@ -31,9 +31,9 @@ axiosClient.interceptors.response.use(
     if (error.response?.status === 401) {
       // Token missing/expired/invalid -> force a fresh login
       localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem("clinic_erp_user");
+      localStorage.removeItem("medicine_inventory_user");
       if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("clinic-erp-unauthorized"));
+        window.dispatchEvent(new CustomEvent("auth:session-expired"));
       }
     }
     const message =

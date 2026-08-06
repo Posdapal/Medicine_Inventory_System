@@ -165,17 +165,15 @@ function StockOut() {
 
   return (
     <div>
-      <PageHeader title="Stock Out" subtitle="Stock Management / Stock Out" />
+      <PageHeader title="Stock Out" subtitle="Stock Management / Stock Out" description="Record and review outgoing inventory." onAdd={() => setIsAddOpen(true)} addLabel="Create Stock Out" />
 
       <Toolbar
         query={query}
         setQuery={setQuery}
         placeholder="Search stock-out records..."
-        onAdd={() => setIsAddOpen(true)}
-        addLabel="Create Stock Out"
         extra={
           <>
-            <ImportButton label="Import Stock Out (Optional)" onImport={handleImport} />
+            <ImportButton label="Import Stock Out" onImport={handleImport} />
             <ActionButton icon={Download} label="Export Stock Out" onClick={handleExport} />
           </>
         }

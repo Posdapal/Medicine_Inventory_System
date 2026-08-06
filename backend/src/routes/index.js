@@ -1,6 +1,8 @@
 const router = require('express').Router();
+const { verifyToken, requirePasswordChanged } = require('../middleware/auth.middleware');
 
 router.use('/auth', require('./auth.routes'));
+router.use(verifyToken, requirePasswordChanged);
 router.use('/dashboard', require('./dashboard.routes'));
 router.use('/patients', require('./patients.routes'));
 router.use('/medicines', require('./medicines.routes'));

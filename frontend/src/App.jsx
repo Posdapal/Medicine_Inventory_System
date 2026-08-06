@@ -136,15 +136,19 @@
 
 
 // App.jsx
-import React, { useState } from "react";
+import { useState } from "react";
+import { Navigate, Route, Routes } from "react-router-dom";
 import {
   LayoutDashboard, Package, Truck, Boxes, AlertTriangle, BarChart3,
-  Settings as SettingsIcon, LogOut, ChevronDown, ChevronRight,
+  Settings as SettingsIcon, LogOut, ChevronDown, ChevronRight, Cross,
+  PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import ThemeContextProvider from "./context/ThemeContextProvider";
 
-import RegisterLogin from "./Authentication/RegisterLogin";
+import Login from "./pages/Login";
+import ResetPassword from "./pages/ResetPassword";
+import ProtectedRoute from "./components/ProtectedRoute";
 import Dashboard from "./components/Dashboard/Dashboard";
 import Products from "./page/Products/Products";
 import Categories from "./page/Categories/Categories";
@@ -159,6 +163,7 @@ import ExpiredProducts from "./page/ExpiredProducts/ExpiredProducts";
 import Reports from "./page/Reports/Reports";
 import Settings from "./page/Settings/Settings";
 import Navbar from "./components/Navbar/Navbar";
+import { SidebarItem } from "./components/ui/Primitives";
 
 // Sidebar structure mirrors: Dashboard / Products / Suppliers /
 // Stock Management / Expiry Management / Reports
@@ -215,19 +220,22 @@ function parentGroupOf(page) {
   return group?.key;
 }
 
-function Shell() {
-  const { isAuthenticated, logout } = useAuth();
+function DashboardShell() {
+  const { logout } = useAuth();
   const [page, setPage] = useState("dashboard");
   const [openGroups, setOpenGroups] = useState(() => new Set([parentGroupOf("dashboard")].filter(Boolean)));
-
-  if (!isAuthenticated) {
-    return <RegisterLogin onLogin={() => setPage("dashboard")} />;
-  }
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const active = page === "settings" ? { Component: Settings } : findActive(page) || NAV[0];
   const ActivePage = active.Component;
 
   const toggleGroup = (key) => {
+    if (sidebarCollapsed) {
+      setSidebarCollapsed(false);
+      setOpenGroups((prev) => new Set(prev).add(key));
+      return;
+    }
+
     setOpenGroups((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
@@ -244,12 +252,30 @@ function Shell() {
   };
 
   return (
-    <div className="min-h-screen flex bg-gray-50 dark:bg-[#0B1220] text-gray-900 dark:text-[#E7ECF6]">
-      <aside className="w-64 shrink-0 border-r border-gray-200 dark:border-[#1E2A45] flex flex-col">
-        <div className="h-16 flex items-center px-6 font-semibold border-b border-gray-200 dark:border-[#1E2A45]">
-          Clinic ERP
+    <div className="flex min-h-screen bg-slate-950 text-slate-100">
+      <aside className={`sticky top-0 flex h-screen shrink-0 flex-col border-r border-slate-800/80 bg-slate-900/70 shadow-2xl shadow-black/20 backdrop-blur-xl transition-[width] duration-300 ${sidebarCollapsed ? "w-24" : "w-[248px]"}`}>
+        <div className={`flex h-[72px] items-center gap-2 border-b border-slate-800/80 ${sidebarCollapsed ? "justify-center px-2" : "px-5"}`}>
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-400 to-cyan-600 text-slate-950 shadow-lg shadow-teal-950/50">
+            <Cross size={21} strokeWidth={2.5} />
+          </div>
+          <div className={`min-w-0 flex-1 ${sidebarCollapsed ? "hidden" : "block"}`}>
+            <p className="truncate text-sm font-bold leading-tight tracking-tight text-slate-100">Medicine Inventory</p>
+            <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-teal-400/70">System</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSidebarCollapsed((collapsed) => !collapsed)}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 transition hover:bg-white/[0.06] hover:text-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400"
+            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {sidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+          </button>
         </div>
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        {!sidebarCollapsed && (
+          <div className="px-4 pb-2 pt-5 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-600">Main menu</div>
+        )}
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3 pb-4">
           {NAV.map((item) => {
             const Icon = item.icon;
 
@@ -257,18 +283,15 @@ function Shell() {
             if (!item.children) {
               const isActive = page === item.key;
               return (
-                <button
+                <SidebarItem
                   key={item.key}
                   onClick={() => selectPage(item.key)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
-                    isActive
-                      ? "bg-blue-600 text-white font-medium"
-                      : "text-gray-500 dark:text-[#8B96AE] hover:bg-black/5 dark:hover:bg-white/[0.04]"
-                  }`}
-                >
-                  <Icon size={17} />
-                  {item.label}
-                </button>
+                  icon={Icon}
+                  label={item.label}
+                  active={isActive}
+                  collapsed={sidebarCollapsed}
+                  title={sidebarCollapsed ? item.label : undefined}
+                />
               );
             }
 
@@ -277,34 +300,27 @@ function Shell() {
             const groupHasActiveChild = item.children.some((c) => c.key === page);
             return (
               <div key={item.key}>
-                <button
+                <SidebarItem
                   onClick={() => toggleGroup(item.key)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
-                    groupHasActiveChild
-                      ? "text-blue-500 dark:text-blue-400 font-medium"
-                      : "text-gray-500 dark:text-[#8B96AE] hover:bg-black/5 dark:hover:bg-white/[0.04]"
-                  }`}
-                >
-                  <Icon size={17} />
-                  <span className="flex-1 text-left">{item.label}</span>
-                  {isOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
-                </button>
-                {isOpen && (
-                  <div className="mt-1 ml-4 pl-3 border-l border-gray-200 dark:border-[#1E2A45] space-y-1">
+                  icon={Icon}
+                  label={item.label}
+                  active={groupHasActiveChild}
+                  collapsed={sidebarCollapsed}
+                  title={sidebarCollapsed ? item.label : undefined}
+                  suffix={isOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+                />
+                {isOpen && !sidebarCollapsed && (
+                  <div className="ml-5 mt-1 space-y-1 border-l border-slate-800 pl-2">
                     {item.children.map((child) => {
                       const isActive = page === child.key;
                       return (
-                        <button
+                        <SidebarItem
                           key={child.key}
                           onClick={() => selectPage(child.key, item.key)}
-                          className={`w-full flex items-center px-3 py-2 rounded-lg text-sm transition-colors ${
-                            isActive
-                              ? "bg-blue-600 text-white font-medium"
-                              : "text-gray-500 dark:text-[#8B96AE] hover:bg-black/5 dark:hover:bg-white/[0.04]"
-                          }`}
-                        >
-                          {child.label}
-                        </button>
+                          label={child.label}
+                          active={isActive}
+                          nested
+                        />
                       );
                     })}
                   </div>
@@ -313,30 +329,31 @@ function Shell() {
             );
           })}
         </nav>
-        <div className="px-3 py-4 border-t border-gray-200 dark:border-[#1E2A45] space-y-1">
-          <button
+        <div className="space-y-1 border-t border-slate-800/80 p-3">
+          <SidebarItem
             onClick={() => setPage("settings")}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
-              page === "settings"
-                ? "bg-blue-600 text-white font-medium"
-                : "text-gray-500 dark:text-[#8B96AE] hover:bg-black/5 dark:hover:bg-white/[0.04]"
-            }`}
-          >
-            <SettingsIcon size={17} /> Settings
-          </button>
-          <button
+            icon={SettingsIcon}
+            label="Settings"
+            active={page === "settings"}
+            collapsed={sidebarCollapsed}
+            title={sidebarCollapsed ? "Settings" : undefined}
+          />
+          <SidebarItem
             onClick={logout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-500 dark:text-[#8B96AE] hover:text-rose-500"
-          >
-            <LogOut size={17} /> Log out
-          </button>
+            icon={LogOut}
+            label="Logout"
+            collapsed={sidebarCollapsed}
+            title={sidebarCollapsed ? "Logout" : undefined}
+          />
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col min-w-0">
-        <Navbar />
-        <main className="flex-1 overflow-y-auto">
-          <ActivePage />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <Navbar onLogout={logout} />
+        <main className="min-w-0 flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top_right,rgba(20,184,166,0.055),transparent_34%)]">
+          <div className="w-full px-4 py-6 sm:px-6 lg:px-8">
+            <ActivePage />
+          </div>
         </main>
       </div>
     </div>
@@ -347,7 +364,19 @@ export default function App() {
   return (
     <ThemeContextProvider>
       <AuthProvider>
-        <Shell />
+        <Routes>
+          <Route path="/login" element={<Login />} />
+
+          <Route element={<ProtectedRoute requirePasswordChange />}>
+            <Route path="/reset-password" element={<ResetPassword />} />
+          </Route>
+
+          <Route element={<ProtectedRoute />}>
+            <Route path="/dashboard/*" element={<DashboardShell />} />
+          </Route>
+
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
       </AuthProvider>
     </ThemeContextProvider>
   );

@@ -1,116 +1,116 @@
-// import React, { createContext, useContext, useEffect, useState } from "react";
-// import { authApi } from "../api/endpoints";
-// import { TOKEN_KEY } from "../api/axiosClient";
-
-// const USER_KEY = "clinic_erp_user";
-// const AuthContext = createContext(null);
-
-// export function AuthProvider({ children }) {
-//   const [user, setUser] = useState(() => {
-//     const stored = localStorage.getItem(USER_KEY);
-//     return stored ? JSON.parse(stored) : null;
-//   });
-//   const [loading, setLoading] = useState(false);
-//   const [error, setError] = useState("");
-
-//   // If the axios interceptor sees a 401, log the app out everywhere
-//   useEffect(() => {
-//     const handleUnauthorized = () => setUser(null);
-//     window.addEventListener("clinic-erp-unauthorized", handleUnauthorized);
-//     return () => window.removeEventListener("clinic-erp-unauthorized", handleUnauthorized);
-//   }, []);
-
-//   const login = async (email, password) => {
-//     setLoading(true);
-//     setError("");
-//     try {
-//       const { data } = await authApi.login(email, password);
-//       localStorage.setItem(TOKEN_KEY, data.token);
-//       localStorage.setItem(USER_KEY, JSON.stringify(data.user));
-//       setUser(data.user);
-//       return true;
-//     } catch (err) {
-//       setError(err.message);
-//       return false;
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   const logout = () => {
-//     localStorage.removeItem(TOKEN_KEY);
-//     localStorage.removeItem(USER_KEY);
-//     setUser(null);
-//   };
-
-//   return (
-//     <AuthContext.Provider value={{ user, login, logout, loading, error, isAuthenticated: !!user }}>
-//       {children}
-//     </AuthContext.Provider>
-//   );
-// }
-
-// export function useAuth() {
-//   const ctx = useContext(AuthContext);
-//   if (!ctx) throw new Error("useAuth must be used within an <AuthProvider>");
-//   return ctx;
-// }
-
-// src/context/AuthContext.jsx
-import React, { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
+import authService from "../services/authService";
+import { TOKEN_KEY, USER_KEY } from "../services/api";
 
 const AuthContext = createContext(null);
 
-// 🔒 Static credentials — change these to whatever you want
-const STATIC_EMAIL = "admin@clinic.com";
-const STATIC_PASSWORD = "admin123";
-
-const SESSION_KEY = "clinic_erp_auth";
+function readStoredUser() {
+  try {
+    return JSON.parse(localStorage.getItem(USER_KEY));
+  } catch {
+    return null;
+  }
+}
 
 export function AuthProvider({ children }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState(readStoredUser);
+  const [loading, setLoading] = useState(Boolean(localStorage.getItem(TOKEN_KEY)));
   const [error, setError] = useState("");
+  const [sessionMessage, setSessionMessage] = useState("");
 
-  // Persist session across page refreshes
+  const storeSession = (data) => {
+    localStorage.setItem(TOKEN_KEY, data.token);
+    localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+    setUser(data.user);
+  };
+
+  const clearSession = () => {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+    setUser(null);
+  };
+
   useEffect(() => {
-    const saved = localStorage.getItem(SESSION_KEY);
-    if (saved === "true") setIsAuthenticated(true);
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) {
+      setLoading(false);
+      return undefined;
+    }
+
+    authService.profile()
+      .then(({ data }) => {
+        localStorage.setItem(USER_KEY, JSON.stringify(data));
+        setUser(data);
+      })
+      .catch(() => clearSession())
+      .finally(() => setLoading(false));
+
+    return undefined;
+  }, []);
+
+  useEffect(() => {
+    const handleExpired = () => {
+      clearSession();
+      setSessionMessage("Your session has expired. Please log in again.");
+    };
+    window.addEventListener("auth:session-expired", handleExpired);
+    return () => window.removeEventListener("auth:session-expired", handleExpired);
   }, []);
 
   const login = async (email, password) => {
     setLoading(true);
     setError("");
-
-    // Simulate a small delay like a real request
-    await new Promise((resolve) => setTimeout(resolve, 400));
-
-    if (email === STATIC_EMAIL && password === STATIC_PASSWORD) {
-      setIsAuthenticated(true);
-      localStorage.setItem(SESSION_KEY, "true");
+    setSessionMessage("");
+    try {
+      const { data } = await authService.login(email, password);
+      storeSession(data);
+      return data.user;
+    } catch (err) {
+      setError(err.message);
+      return null;
+    } finally {
       setLoading(false);
+    }
+  };
+
+  const changePassword = async (currentPassword, newPassword) => {
+    setLoading(true);
+    setError("");
+    try {
+      const { data } = await authService.changePassword(currentPassword, newPassword);
+      storeSession(data);
       return true;
-    } else {
-      setError("Invalid email or password");
-      setLoading(false);
+    } catch (err) {
+      setError(err.message);
       return false;
+    } finally {
+      setLoading(false);
     }
   };
 
   const logout = () => {
-    setIsAuthenticated(false);
-    localStorage.removeItem(SESSION_KEY);
+    clearSession();
+    setError("");
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout, loading, error }}>
+    <AuthContext.Provider value={{
+      user,
+      isAuthenticated: Boolean(user && localStorage.getItem(TOKEN_KEY)),
+      loading,
+      error,
+      sessionMessage,
+      login,
+      changePassword,
+      logout,
+    }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
 export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
-  return ctx;
+  const context = useContext(AuthContext);
+  if (!context) throw new Error("useAuth must be used within an AuthProvider");
+  return context;
 }

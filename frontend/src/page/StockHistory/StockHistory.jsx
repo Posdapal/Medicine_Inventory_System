@@ -48,7 +48,7 @@ function StockHistory() {
 
   return (
     <div>
-      <PageHeader title="Stock History" subtitle="Stock Management / Stock History" />
+      <PageHeader title="Stock History" subtitle="Stock Management / Stock History" description="Review inventory movement and transaction history." />
 
       <Toolbar
         query={query}

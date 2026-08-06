@@ -34,15 +34,15 @@ const getById = asyncHandler(async (req, res) => {
 
 // POST /api/products
 const create = asyncHandler(async (req, res) => {
-  const { name, sku, category_id, supplier_id, unit, price, stock_quantity, reorder_level, description } = req.body;
+  const { name, sku, category_id, supplier_id, unit, price, stock_quantity, reorder_level, description, image_url } = req.body;
   if (!name || !category_id) return fail(res, 'Name and category are required', 400);
 
   const result = await query(
-    `INSERT INTO products (name, sku, category_id, supplier_id, unit, price, stock_quantity, reorder_level, description)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO products (name, sku, category_id, supplier_id, unit, price, stock_quantity, reorder_level, description, image_url)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       name, sku || null, category_id, supplier_id || null, unit || 'unit', price || 0,
-      stock_quantity || 0, reorder_level || 10, description || null,
+      stock_quantity || 0, reorder_level || 10, description || null, image_url || null,
     ]
   );
   return ok(res, { id: result.insertId }, 'Product created', 201);
@@ -51,12 +51,12 @@ const create = asyncHandler(async (req, res) => {
 // PUT /api/products/:id
 const update = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { name, sku, category_id, supplier_id, unit, price, stock_quantity, reorder_level, description } = req.body;
+  const { name, sku, category_id, supplier_id, unit, price, stock_quantity, reorder_level, description, image_url } = req.body;
   await query(
     `UPDATE products
-     SET name=?, sku=?, category_id=?, supplier_id=?, unit=?, price=?, stock_quantity=?, reorder_level=?, description=?
+     SET name=?, sku=?, category_id=?, supplier_id=?, unit=?, price=?, stock_quantity=?, reorder_level=?, description=?, image_url=?
      WHERE id=?`,
-    [name, sku, category_id, supplier_id, unit, price, stock_quantity, reorder_level, description, id]
+    [name, sku, category_id, supplier_id, unit, price, stock_quantity, reorder_level, description, image_url || null, id]
   );
   return ok(res, null, 'Product updated');
 });

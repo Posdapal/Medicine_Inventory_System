@@ -26,4 +26,13 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-module.exports = { verifyToken, requireAdmin };
+function requirePasswordChanged(req, res, next) {
+  if (req.user?.mustChangePassword) {
+    return fail(res, 'You must change your password before accessing this resource', 403, {
+      code: 'PASSWORD_CHANGE_REQUIRED',
+    });
+  }
+  next();
+}
+
+module.exports = { verifyToken, requireAdmin, requirePasswordChanged };

@@ -1,17 +1,43 @@
 // components/ui/common.jsx
 // Shared building blocks used across all inventory pages.
 // Extracted from the original Products/Suppliers pages — styling is untouched.
-import { Search, Plus, X, Upload, Download, FileSpreadsheet, FileText, Printer } from "lucide-react";
+import { Search, Plus, X, Upload, Download, FileSpreadsheet, FileText, Printer, ChevronRight } from "lucide-react";
 
-export function PageHeader({ title, subtitle, action }) {
+export function PageHeader({ title, subtitle, description, action, onAdd, addLabel }) {
+  const crumbs = subtitle?.includes("/") ? subtitle.split("/").map((item) => item.trim()) : [];
+  const supportingText = description || (crumbs.length === 0 ? subtitle : "");
+
   return (
-    <div className="flex items-start justify-between mb-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-[#E7ECF6] tracking-tight">{title}</h1>
-        {subtitle && <p className="text-sm text-[#8B96AE] mt-1">{subtitle}</p>}
+    <header className="mb-6 rounded-2xl border border-[#1E2A45] bg-[#111A2C]/90 px-5 py-5 shadow-xl shadow-black/10 sm:px-6">
+      {crumbs.length > 0 && (
+        <nav aria-label="Breadcrumb" className="mb-3 flex items-center gap-1.5 text-xs font-medium text-[#7D8AA3]">
+          {crumbs.map((crumb, index) => (
+            <span key={crumb} className="contents">
+              {index > 0 && <ChevronRight size={13} aria-hidden="true" />}
+              <span className={index === crumbs.length - 1 ? "text-teal-400" : ""}>{crumb}</span>
+            </span>
+          ))}
+        </nav>
+      )}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-[#E7ECF6]">{title}</h1>
+          {supportingText && <p className="mt-1 text-sm text-[#8B96AE]">{supportingText}</p>}
+        </div>
+        <div className="flex items-center gap-2">
+          {action}
+          {onAdd && (
+            <button
+              type="button"
+              onClick={onAdd}
+              className="inline-flex w-fit items-center justify-center gap-2 rounded-lg bg-teal-500 px-4 py-2.5 text-sm font-semibold text-slate-950 shadow-sm shadow-teal-950/30 transition-colors hover:bg-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/50 focus:ring-offset-2 focus:ring-offset-[#111A2C]"
+            >
+              <Plus size={16} strokeWidth={2.5} /> {addLabel}
+            </button>
+          )}
+        </div>
       </div>
-      {action}
-    </div>
+    </header>
   );
 }
 

@@ -42,7 +42,7 @@ function NearExpiry() {
 
   return (
     <div>
-      <PageHeader title="Near Expiry" subtitle="Expiry Management / Near Expiry" />
+      <PageHeader title="Near Expiry" subtitle="Expiry Management / Near Expiry" description="Track products approaching their expiry date." />
 
       <Toolbar
         query={query}

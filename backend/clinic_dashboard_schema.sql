@@ -26,6 +26,7 @@ CREATE TABLE users (
     role            ENUM('admin','user') NOT NULL DEFAULT 'user',
     profile_image   VARCHAR(255)        NULL,
     status          ENUM('active','inactive') NOT NULL DEFAULT 'active',
+    must_change_password TINYINT(1)       NOT NULL DEFAULT 1,
     created_at      TIMESTAMP           DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP           DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
@@ -110,6 +111,7 @@ CREATE TABLE products (
     stock_quantity  INT UNSIGNED NOT NULL DEFAULT 0,
     reorder_level   INT UNSIGNED NOT NULL DEFAULT 10,
     description     TEXT NULL,
+    image_url       LONGTEXT NULL,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_product_category FOREIGN KEY (category_id)
@@ -275,7 +277,8 @@ INSERT INTO categories (name, type) VALUES
     ('Vitamin', 'medicine'), ('Antibiotic', 'medicine'),
     ('Medical Equipment', 'product'), ('Consumables', 'product');
 
-INSERT INTO users (full_name, username, email, password, role)
-VALUES ('Admin User', 'admin', 'admin@clinic.local', '$2y$10$replaceWithARealBcryptHash', 'admin');
+-- Default account: admin@gmail.com / Admin@123 (forced reset on first login)
+INSERT INTO users (full_name, username, email, password, role, must_change_password)
+VALUES ('Admin User', 'admin', 'admin@gmail.com', '$2b$12$hMaTLDuUgL11LTVPS5sxoOYE/On.stDxD9vQTq0gu2yrMPmqy1zNG', 'admin', 1);
 
 INSERT INTO user_settings (user_id) VALUES (1);

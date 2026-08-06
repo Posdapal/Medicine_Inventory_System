@@ -1,59 +1,67 @@
-import React, { useEffect, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
+import { BellRing, KeyRound, LockKeyhole, Mail, Palette, Save, ShieldCheck, UserRound } from "lucide-react";
+import Swal from "sweetalert2";
 import { settingsApi } from "../../api/endpoints";
-import Swal from 'sweetalert2';
+import { useAuth } from "../../context/AuthContext";
+import { ThemeCotext } from "../../context/ThemeContextProvider";
+import { Alert, Badge, Button, Card, ChecklistItem, Input, Tabs } from "../../components/ui/Primitives";
 
-function PageHeader({ title, subtitle, action }) {
+function SelectField({ label, value, onChange, children }) {
   return (
-    <div className="flex items-start justify-between mb-6">
+    <label className="block">
+      <span className="mb-2 block text-sm font-medium text-slate-200">{label}</span>
+      <select
+        value={value}
+        onChange={onChange}
+        className="min-h-12 w-full rounded-xl border border-slate-700/80 bg-slate-800/70 px-4 text-sm text-slate-100 outline-none transition hover:border-slate-600 focus:border-teal-400/70 focus:ring-4 focus:ring-teal-400/10"
+      >
+        {children}
+      </select>
+    </label>
+  );
+}
+
+function Toggle({ checked, onChange, label, description }) {
+  return (
+    <div className="flex items-center justify-between gap-5 rounded-xl border border-slate-800 bg-slate-950/35 p-4">
       <div>
-        <h1 className="text-2xl font-semibold text-[#E7ECF6] tracking-tight">{title}</h1>
-        {subtitle && <p className="text-sm text-[#8B96AE] mt-1">{subtitle}</p>}
+        <p className="text-sm font-medium text-slate-200">{label}</p>
+        <p className="mt-1 text-xs leading-relaxed text-slate-500">{description}</p>
       </div>
-      {action}
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        onClick={onChange}
+        className={`relative h-7 w-12 shrink-0 rounded-full p-1 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400 ${checked ? "bg-teal-500" : "bg-slate-700"}`}
+      >
+        <span className={`block h-5 w-5 rounded-full bg-white shadow-md transition-transform ${checked ? "translate-x-5" : ""}`} />
+      </button>
     </div>
   );
 }
 
-function Card({ children, className = "" }) {
-  return <div className={`bg-[#141E33] border border-[#1E2A45] rounded-xl ${className}`}>{children}</div>;
-}
-
-function Badge({ children, tone = "neutral" }) {
-  const tones = {
-    neutral: "bg-slate-700/40 text-slate-300 border-slate-600/50",
-    good: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
-    warn: "bg-amber-500/10 text-amber-400 border-amber-500/30",
-    bad: "bg-rose-500/10 text-rose-400 border-rose-500/30",
-    info: "bg-blue-500/10 text-blue-400 border-blue-500/30",
-  };
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${tones[tone]}`}>
-      {children}
-    </span>
-  );
-}
-
 function Settings() {
+  const { logout } = useAuth();
+  const { theme, setTheme } = useContext(ThemeCotext);
   const [tab, setTab] = useState("profile");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-
+  const [language, setLanguage] = useState("English");
   const [profile, setProfile] = useState({ full_name: "", email: "", address: "", date_of_birth: "", gender: "" });
   const [preferences, setPreferences] = useState({ notifications_email: false, notifications_sms: false });
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
-  const [passwordForm, setPasswordForm] = useState({ current_password: "", new_password: "" });
+  const [passwordForm, setPasswordForm] = useState({ current_password: "", new_password: "", confirm_password: "" });
 
   const tabs = [
-    { key: "profile", label: "Profile" },
-    { key: "preferences", label: "Preferences" },
-    { key: "security", label: "Security" },
+    { key: "profile", label: "Profile", icon: UserRound },
+    { key: "preferences", label: "Preferences", icon: Palette },
+    { key: "security", label: "Security", icon: ShieldCheck },
   ];
 
   useEffect(() => {
     async function loadSettings() {
-      setLoading(true);
-      setError("");
       try {
         const { data } = await settingsApi.get();
         setProfile({
@@ -67,7 +75,6 @@ function Settings() {
           notifications_email: !!data.notifications_email,
           notifications_sms: !!data.notifications_sms,
         });
-        setTwoFactorEnabled(!!data.two_factor_enabled);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -77,306 +84,194 @@ function Settings() {
     loadSettings();
   }, []);
 
-  // const saveProfile = async () => {
-  //   setSaving(true);
-  //   try {
-  //     await settingsApi.updateProfile(profile);
-  //     alert("Profile updated.");
-  //   } catch (err) {
-  //     alert(err.message);
-  //   } finally {
-  //     setSaving(false);
-  //   }
-  // };
+  const toast = (title) => Swal.fire({
+    title,
+    icon: "success",
+    timer: 1800,
+    showConfirmButton: false,
+    background: "#0f172a",
+    color: "#f1f5f9",
+  });
 
   const saveProfile = async () => {
     setSaving(true);
     try {
       await settingsApi.updateProfile(profile);
-      Swal.fire({
-        title: "Profile updated.",
-        icon: "success",
-        draggable: true,
-        background: "#141E33",
-        color: "#ffffff",
-      });
+      toast("Profile updated");
     } catch (err) {
-      Swal.fire({
-        title: "Error",
-        text: err.message,
-        icon: "error",
-        draggable: true,
-        background: "#141E33",
-        color: "#ffffff",
-      });
+      Swal.fire({ title: "Unable to save", text: err.message, icon: "error", background: "#0f172a", color: "#f1f5f9" });
     } finally {
       setSaving(false);
     }
   };
 
   const togglePreference = async (key) => {
+    const previous = preferences;
     const next = { ...preferences, [key]: !preferences[key] };
     setPreferences(next);
     try {
       await settingsApi.updatePreferences(next);
     } catch (err) {
-      alert(err.message);
-      setPreferences(preferences); // revert on failure
+      setPreferences(previous);
+      setError(err.message);
     }
   };
 
-  // const savePassword = async () => {
-  //   if (!passwordForm.current_password || !passwordForm.new_password) {
-  //     alert("Please fill in both password fields.");
-  //     return;
-  //   }
-  //   setSaving(true);
-  //   try {
-  //     await settingsApi.updatePassword(passwordForm);
-  //     setPasswordForm({ current_password: "", new_password: "" });
-  //     alert("Password updated.");
-  //   } catch (err) {
-  //     alert(err.message);
-  //   } finally {
-  //     setSaving(false);
-  //   }
-  // };
-
-  const Toast = Swal.mixin({
-    toast: true,
-    position: "top-end",
-    showConfirmButton: false,
-    timer: 2500,
-    timerProgressBar: true,
-    background: "#141E33",
-    color: "#ffffff",
-  });
+  const passwordChecks = useMemo(() => ({
+    length: passwordForm.new_password.length >= 8,
+    upper: /[A-Z]/.test(passwordForm.new_password),
+    number: /\d/.test(passwordForm.new_password),
+    special: /[^A-Za-z0-9]/.test(passwordForm.new_password),
+  }), [passwordForm.new_password]);
 
   const savePassword = async () => {
-    if (!passwordForm.current_password || !passwordForm.new_password) {
+    const strong = Object.values(passwordChecks).every(Boolean);
+    if (!passwordForm.current_password || !strong || passwordForm.new_password !== passwordForm.confirm_password) {
       Swal.fire({
-        title: "Missing fields",
-        text: "Please fill in both password fields.",
+        title: "Check your password",
+        text: "Complete every password requirement and make sure both new passwords match.",
         icon: "warning",
-        background: "#141E33",
-        color: "#ffffff",
+        background: "#0f172a",
+        color: "#f1f5f9",
       });
       return;
     }
-
     setSaving(true);
     try {
-      await settingsApi.updatePassword(passwordForm);
-      setPasswordForm({ current_password: "", new_password: "" });
-      Toast.fire({
-        title: "Password updated",
-        icon: "success",
+      await settingsApi.updatePassword({
+        current_password: passwordForm.current_password,
+        new_password: passwordForm.new_password,
       });
+      setPasswordForm({ current_password: "", new_password: "", confirm_password: "" });
+      toast("Password updated");
     } catch (err) {
-      Swal.fire({
-        title: "Error",
-        text: err.message,
-        icon: "error",
-        background: "#141E33",
-        color: "#ffffff",
-      });
+      Swal.fire({ title: "Unable to update", text: err.message, icon: "error", background: "#0f172a", color: "#f1f5f9" });
     } finally {
       setSaving(false);
     }
   };
 
-  const toggleTwoFactor = async () => {
-    const next = !twoFactorEnabled;
-    setTwoFactorEnabled(next);
-    try {
-      await settingsApi.updateTwoFactor(next);
-    } catch (err) {
-      alert(err.message);
-      setTwoFactorEnabled(!next); // revert on failure
-    }
-  };
-
-  if (loading) {
-    return (
-      <div>
-        <PageHeader title="Settings" subtitle="Profile, preferences and account security" />
-        <p className="text-sm text-[#8B96AE]">Loading settings...</p>
-      </div>
-    );
-  }
-
-  function Toggle({ checked, onChange, label }) {
-    return (
-      <button
-        role="switch"
-        aria-checked={checked}
-        aria-label={label}
-        onClick={onChange}
-        className={`relative inline-flex items-center rounded-full transition-colors duration-200 ease-out
-        focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#141E33]
-        ${checked ? "bg-blue-600" : "bg-[#1E2A45] hover:bg-[#293656]"}`}
-        style={{ height: 24, width: 44, padding: 3 }}
-      >
-        <span
-          className="flex items-center justify-center rounded-full bg-white transition-transform duration-200 ease-out"
-          style={{
-            height: 18,
-            width: 18,
-            transform: checked ? "translateX(20px)" : "translateX(0px)",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.4)",
-          }}
-        >
-          <svg
-            viewBox="0 0 12 12"
-            className={`transition-opacity duration-150 ${checked ? "opacity-100" : "opacity-0"}`}
-            style={{ height: 9, width: 9 }}
-          >
-            <path
-              d="M2 6.2L4.6 9L10 3"
-              fill="none"
-              stroke="#2563EB"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </span>
-      </button>
-    );
-  }
-
   return (
-    <div className="p-6 space-y-6">
-      <PageHeader title="Settings" subtitle="Profile, preferences and account security" />
-      <div className="flex gap-1 mb-5 border-b border-[#1E2A45]">
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${tab === t.key ? "border-blue-500 text-[#E7ECF6]" : "border-transparent text-[#8B96AE] hover:text-[#E7ECF6]"
-              }`}
+    <div className="w-full">
+      <header className="mb-6 rounded-2xl border border-[#1E2A45] bg-[#111A2C]/90 px-5 py-5 shadow-xl shadow-black/10 sm:px-6">
+        <div className="mb-3 flex items-center gap-1.5 text-xs font-medium text-[#7D8AA3]">
+          <span>Settings</span><span aria-hidden="true">/</span><span className="text-teal-400">Account Center</span>
+        </div>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="mb-2 flex items-center gap-2">
+            <Badge>Account center</Badge>
+            <span className="text-xs text-slate-600">•</span>
+            <span className="text-xs text-slate-500">Secure workspace</span>
+          </div>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-50 sm:text-3xl">Settings</h2>
+          <p className="mt-2 max-w-xl text-sm leading-relaxed text-slate-400">
+            Manage your personal information, workspace preferences, and account security.
+          </p>
+        </div>
+        <div className="hidden items-center gap-2 text-xs text-slate-500 sm:flex">
+          <ShieldCheck size={16} className="text-emerald-400" />
+          Your information is securely protected
+        </div>
+        </div>
+      </header>
+
+      <div className="space-y-5">
+        {error && (
+          <Alert
+            title="Your session has expired. Please log in again."
+            action={<Button onClick={logout} className="w-full sm:w-auto">Login Again</Button>}
           >
-            {t.label}
-          </button>
-        ))}
+            Sign in to securely access and update your account settings.
+          </Alert>
+        )}
+
+        <Tabs tabs={tabs} active={tab} onChange={setTab} />
+
+        <Card className="overflow-hidden">
+          <div className="border-b border-slate-800 bg-gradient-to-r from-slate-900 to-teal-950/20 px-5 py-5 sm:px-7">
+            <div className="flex items-center gap-3">
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-teal-400/10 text-teal-300">
+                {tab === "profile" && <UserRound size={21} />}
+                {tab === "preferences" && <Palette size={21} />}
+                {tab === "security" && <LockKeyhole size={21} />}
+              </span>
+              <div>
+                <h3 className="font-semibold text-slate-100">
+                  {tab === "profile" ? "Personal information" : tab === "preferences" ? "Workspace preferences" : "Password & security"}
+                </h3>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  {tab === "profile" ? "Keep your account details accurate and up to date." : tab === "preferences" ? "Personalize how the system works for you." : "Use a strong, unique password to protect your account."}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-5 sm:p-7">
+            {loading ? (
+              <div className="grid max-w-4xl gap-5 md:grid-cols-2">
+                {[1, 2, 3].map((item) => <div key={item} className="h-20 animate-pulse rounded-xl bg-slate-800/60" />)}
+              </div>
+            ) : tab === "profile" ? (
+              <div className="max-w-4xl">
+                <div className="grid gap-5 md:grid-cols-2">
+                  <Input label="Full Name" placeholder="Enter your full name" value={profile.full_name} onChange={(e) => setProfile({ ...profile, full_name: e.target.value })} />
+                  <Input label="Email" type="email" placeholder="name@pharmacy.com" value={profile.email} onChange={(e) => setProfile({ ...profile, email: e.target.value })} />
+                  <Input label="Address" placeholder="Street, city, state" value={profile.address} onChange={(e) => setProfile({ ...profile, address: e.target.value })} className="md:col-span-2" />
+                </div>
+                <div className="mt-7 flex border-t border-slate-800 pt-6">
+                  <Button onClick={saveProfile} disabled={saving}><Save size={17} />{saving ? "Saving..." : "Save Changes"}</Button>
+                </div>
+              </div>
+            ) : tab === "preferences" ? (
+              <div className="max-w-4xl space-y-6">
+                <div className="grid gap-5 md:grid-cols-2">
+                  <SelectField label="Theme Mode" value={theme} onChange={(e) => setTheme(e.target.value)}>
+                    <option value="dark">Dark mode</option>
+                    <option value="light">Light mode</option>
+                  </SelectField>
+                  <SelectField label="Language" value={language} onChange={(e) => setLanguage(e.target.value)}>
+                    <option>English</option>
+                    <option>Khmer</option>
+                  </SelectField>
+                </div>
+                <div>
+                  <div className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-200"><BellRing size={16} className="text-teal-300" /> Notification Preference</div>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <Toggle checked={preferences.notifications_email} onChange={() => togglePreference("notifications_email")} label="Email notifications" description="Receive stock and expiry alerts by email." />
+                    <Toggle checked={preferences.notifications_sms} onChange={() => togglePreference("notifications_sms")} label="SMS notifications" description="Receive urgent inventory alerts by SMS." />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="grid max-w-5xl gap-7 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)]">
+                <div className="space-y-5">
+                  <Input label="Current Password" type="password" placeholder="Enter current password" value={passwordForm.current_password} onChange={(e) => setPasswordForm({ ...passwordForm, current_password: e.target.value })} />
+                  <Input label="New Password" type="password" placeholder="Create a strong password" value={passwordForm.new_password} onChange={(e) => setPasswordForm({ ...passwordForm, new_password: e.target.value })} />
+                  <Input label="Confirm Password" type="password" placeholder="Re-enter new password" value={passwordForm.confirm_password} onChange={(e) => setPasswordForm({ ...passwordForm, confirm_password: e.target.value })} />
+                  <div className="border-t border-slate-800 pt-6">
+                    <Button onClick={savePassword} disabled={saving}><KeyRound size={17} />{saving ? "Saving..." : "Save Password"}</Button>
+                  </div>
+                </div>
+                <div className="h-fit rounded-2xl border border-slate-800 bg-slate-950/40 p-5">
+                  <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-200"><ShieldCheck size={17} className="text-teal-300" /> Strong password checklist</div>
+                  <ul className="space-y-3">
+                    <ChecklistItem valid={passwordChecks.length}>At least 8 characters</ChecklistItem>
+                    <ChecklistItem valid={passwordChecks.upper}>One uppercase letter</ChecklistItem>
+                    <ChecklistItem valid={passwordChecks.number}>One number</ChecklistItem>
+                    <ChecklistItem valid={passwordChecks.special}>One special character</ChecklistItem>
+                    <ChecklistItem valid={passwordForm.confirm_password !== "" && passwordForm.new_password === passwordForm.confirm_password}>Passwords match</ChecklistItem>
+                  </ul>
+                  <div className="mt-5 flex gap-2 rounded-xl bg-teal-400/[0.06] p-3 text-xs leading-relaxed text-teal-100/60">
+                    <Mail size={15} className="mt-0.5 shrink-0 text-teal-300" />
+                    Never share your password or verification details with anyone.
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </Card>
       </div>
-
-      {error && <p className="text-sm text-rose-400 mb-3">{error}</p>}
-
-      <Card className="p-6 max-w-xl">
-        {tab === "profile" && (
-          <div className="space-y-4">
-            <div>
-              <label className="text-xs text-[#8B96AE] mb-1 block">Full Name</label>
-              <input
-                value={profile.full_name}
-                onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
-                className="w-full bg-[#0F1626] border border-[#1E2A45] rounded-lg px-3 py-2 text-sm text-[#E7ECF6] focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-[#8B96AE] mb-1 block">Email</label>
-              <input
-                value={profile.email}
-                onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                className="w-full bg-[#0F1626] border border-[#1E2A45] rounded-lg px-3 py-2 text-sm text-[#E7ECF6] focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-[#8B96AE] mb-1 block">Address</label>
-              <input
-                placeholder="Street, city, state"
-                value={profile.address}
-                onChange={(e) => setProfile({ ...profile, address: e.target.value })}
-                className="w-full bg-[#0F1626] border border-[#1E2A45] rounded-lg px-3 py-2 text-sm text-[#E7ECF6] focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-              />
-            </div>
-            <button
-              onClick={saveProfile}
-              disabled={saving}
-              className="bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white text-sm font-medium px-4 py-2 rounded-lg"
-            >
-              {saving ? "Saving..." : "Save Changes"}
-            </button>
-          </div>
-        )}
-
-        {tab === "preferences" && (
-          <div className="space-y-4">
-            {/* {[
-              { key: "notifications_email", label: "Email notifications" },
-              { key: "notifications_sms", label: "SMS notifications" },
-            ].map((p) => (
-              <div key={p.key} className="flex items-center justify-between py-2 border-b border-[#1E2A45] last:border-0">
-                <span className="text-sm text-[#D7DEEB]">{p.label}</span>
-                <button
-                  onClick={() => togglePreference(p.key)}
-                  className={`relative transition-colors ${preferences[p.key] ? "bg-blue-600" : "bg-[#1E2A45]"}`}
-                  style={{ height: 22, width: 40, borderRadius: 9999 }}
-                >
-                  <span
-                    className="absolute top-0.5 rounded-full bg-white transition-transform"
-                    style={{
-                      height: 18,
-                      width: 18,
-                      transform: preferences[p.key] ? "translateX(19px)" : "translateX(2px)",
-                    }}
-                  />
-                </button>
-              </div>
-            ))} */}
-            {[
-              { key: "notifications_email", label: "Email notifications" },
-              { key: "notifications_sms", label: "SMS notifications" },
-            ].map((p) => (
-              <div key={p.key} className="flex items-center justify-between py-3 border-b border-[#1E2A45] last:border-0">
-                <span className="text-sm text-[#D7DEEB]">{p.label}</span>
-                <Toggle
-                  checked={preferences[p.key]}
-                  onChange={() => togglePreference(p.key)}
-                  label={p.label}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {tab === "security" && (
-          <div className="space-y-4">
-            <div>
-              <label className="text-xs text-[#8B96AE] mb-1 block">Current Password</label>
-              <input
-                type="password"
-                value={passwordForm.current_password}
-                onChange={(e) => setPasswordForm({ ...passwordForm, current_password: e.target.value })}
-                className="w-full bg-[#0F1626] border border-[#1E2A45] rounded-lg px-3 py-2 text-sm text-[#E7ECF6] focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-[#8B96AE] mb-1 block">New Password</label>
-              <input
-                type="password"
-                value={passwordForm.new_password}
-                onChange={(e) => setPasswordForm({ ...passwordForm, new_password: e.target.value })}
-                className="w-full bg-[#0F1626] border border-[#1E2A45] rounded-lg px-3 py-2 text-sm text-[#E7ECF6] focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-              />
-            </div>
-            <div className="flex items-center justify-between py-2">
-              <span className="text-sm text-[#D7DEEB]">Two-factor authentication</span>
-              <button onClick={toggleTwoFactor}>
-                <Badge tone={twoFactorEnabled ? "good" : "warn"}>{twoFactorEnabled ? "Enabled" : "Disabled"}</Badge>
-              </button>
-            </div>
-            <button
-              onClick={savePassword}
-              disabled={saving}
-              className="bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white text-sm font-medium px-4 py-2 rounded-lg"
-            >
-              {saving ? "Updating..." : "Update Security"}
-            </button>
-          </div>
-        )}
-      </Card>
     </div>
   );
 }

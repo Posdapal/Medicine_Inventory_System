@@ -486,6 +486,7 @@ function mapProductFromApi(p) {
     product_code: p.product_code,
     product_name: p.product_name,
     generic_name: p.generic_name || "",
+    image_url: p.image_url || "",
     category: p.category_name,
     unit: p.unit_name,
     available_quantity: p.available_quantity ?? 0,
@@ -501,6 +502,7 @@ function mapProductToApi(form, categories, units) {
     product_code: form.product_code,
     product_name: form.product_name,
     generic_name: form.generic_name || null,
+    image_url: form.image_url || null,
     category_id: category ? category.id : null,
     unit_id: unit ? unit.id : null,
     minimum_stock: form.minimum_stock,
@@ -514,6 +516,7 @@ function ProductForm({ initialData, onSubmit, onClose, categories, units, submit
       product_code: "",
       product_name: "",
       generic_name: "",
+      image_url: "",
       category: categories[0]?.name || "",
       unit: units[0]?.name || "",
       minimum_stock: 0,
@@ -547,6 +550,34 @@ function ProductForm({ initialData, onSubmit, onClose, categories, units, submit
       <FormField label="Generic Name">
         <input type="text" value={formData.generic_name}
           onChange={(e) => setFormData({ ...formData, generic_name: e.target.value })} className={inputClass} />
+      </FormField>
+
+      <FormField label="Product Image">
+        <input
+          type="file"
+          accept="image/*"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => setFormData((current) => ({ ...current, image_url: reader.result }));
+            reader.readAsDataURL(file);
+          }}
+          className={`${inputClass} file:mr-3 file:rounded-md file:border-0 file:bg-teal-500/15 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-teal-400 hover:file:bg-teal-500/25`}
+        />
+        {formData.image_url && (
+          <div className="mt-3 flex items-center gap-3 rounded-lg border border-[#1E2A45] bg-[#0F1626] p-3">
+            <img src={formData.image_url} alt="Product preview" className="h-14 w-14 rounded-lg object-cover" />
+            <span className="flex-1 text-xs text-[#8B96AE]">Selected image</span>
+            <button
+              type="button"
+              onClick={() => setFormData((current) => ({ ...current, image_url: "" }))}
+              className="text-xs font-medium text-rose-400 hover:text-rose-300"
+            >
+              Remove
+            </button>
+          </div>
+        )}
       </FormField>
 
       <div className="grid grid-cols-2 gap-4">
@@ -705,14 +736,12 @@ function Products() {
 
   return (
     <div>
-      <PageHeader title="Product List" subtitle="Products / Product List" />
+      <PageHeader title="Product List" subtitle="Products / Product List" description="Manage products and their inventory details." onAdd={() => setIsAddOpen(true)} addLabel="Add Product" />
 
       <Toolbar
         query={query}
         setQuery={setQuery}
         placeholder="Search products..."
-        onAdd={() => setIsAddOpen(true)}
-        addLabel="Add Product"
         extra={
           <>
             <ImportButton label="Import Products" onImport={handleImportProducts} />

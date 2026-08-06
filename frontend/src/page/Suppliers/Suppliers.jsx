@@ -2,18 +2,7 @@ import { useEffect, useState } from "react";
 import { Search, Plus, Trash2, X, Edit2 } from "lucide-react";
 import { suppliersApi } from "../../api/endpoints";
 import Swal from 'sweetalert2';
-
-function PageHeader({ title, subtitle, action }) {
-  return (
-    <div className="flex items-start justify-between mb-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-[#E7ECF6] tracking-tight">{title}</h1>
-        {subtitle && <p className="text-sm text-[#8B96AE] mt-1">{subtitle}</p>}
-      </div>
-      {action}
-    </div>
-  );
-}
+import { PageHeader } from "../../components/ui/Common";
 
 function Toolbar({ query, setQuery, placeholder, onAdd, addLabel }) {
   return (
@@ -305,15 +294,13 @@ function Suppliers() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <PageHeader title="Suppliers" subtitle="Vendor contacts and status" />
+    <div className="space-y-6">
+      <PageHeader title="Suppliers" subtitle="Suppliers / Supplier List" description="Manage vendor contacts and supplier status." onAdd={() => setIsAddOpen(true)} addLabel="Add Supplier" />
 
       <Toolbar
         query={query}
         setQuery={setQuery}
         placeholder="Search suppliers..."
-        onAdd={() => setIsAddOpen(true)}
-        addLabel="Add Supplier"
       />
 
       {error && <p className="text-sm text-rose-400 mb-3">{error}</p>}

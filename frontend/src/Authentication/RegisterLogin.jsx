@@ -23,7 +23,7 @@ function RegisterLogin({ onLogin }) {
               <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center">
                 <Stethoscope size={18} className="text-white" />
               </div>
-              <span className="text-xl font-semibold text-[#E7ECF6] tracking-tight">Clinic ERP</span>
+              <span className="text-xl font-semibold text-[#E7ECF6] tracking-tight">Medicine Inventory System</span>
             </div>
             <h2 className="text-lg font-semibold text-[#E7ECF6] mb-1">Welcome back</h2>
             <p className="text-sm text-[#8B96AE] mb-6">Sign in to manage the clinic dashboard.</p>
@@ -83,7 +83,7 @@ function RegisterLogin({ onLogin }) {
             </div>
           </form>
         </div>
-        <p className="text-center text-xs text-[#5D6B85] mt-5">Clinic ERP · Inventory &amp; healthcare management</p>
+        <p className="text-center text-xs text-[#5D6B85] mt-5">Medicine Inventory System &middot; Healthcare inventory management</p>
       </div>
     </div>
   );

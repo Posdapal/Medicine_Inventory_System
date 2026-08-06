@@ -139,6 +139,7 @@ import {
   Truck, Tags, Users as UsersIcon,
 } from "lucide-react";
 import { Bar } from "react-chartjs-2";
+import { PageHeader } from "../ui/Common";
 import {
   Chart as ChartJS,
   BarElement,
@@ -225,20 +226,32 @@ const Dashboard = () => {
   };
 
   if (loading) {
-    return <div className="grow p-6 text-gray-500 dark:text-gray-400">Loading dashboard...</div>;
+    return (
+      <div className="grow space-y-6">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight text-[#E7ECF6]">Dashboard</h2>
+          <p className="mt-1 text-sm text-[#8B96AE]">Inventory overview at a glance</p>
+        </div>
+        <p className="text-sm text-gray-500 dark:text-gray-400">Loading dashboard...</p>
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="grow p-6 text-red-500">{error}</div>;
+    return (
+      <div className="grow space-y-6">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight text-[#E7ECF6]">Dashboard</h2>
+          <p className="mt-1 text-sm text-[#8B96AE]">Inventory overview at a glance</p>
+        </div>
+        <p className="text-sm text-rose-400">{error}</p>
+      </div>
+    );
   }
 
   return (
-    <div className="grow p-6 space-y-6">
-      {/* Header */}
-      <div>
-        <h2 className="text-2xl font-semibold text-[#E7ECF6] tracking-tight">Dashboard</h2>
-        <p className="text-sm text-[#8B96AE] mt-1">Inventory overview at a glance</p>
-      </div>
+    <div className="grow space-y-6">
+      <PageHeader title="Dashboard" subtitle="Dashboard / Overview" description="Inventory overview at a glance." />
 
       {/* Row 1 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">

@@ -41,7 +41,7 @@ function ExpiredProducts() {
 
   return (
     <div>
-      <PageHeader title="Expired Products" subtitle="Expiry Management / Expired Products" />
+      <PageHeader title="Expired Products" subtitle="Expiry Management / Expired Products" description="Review products that have passed their expiry date." />
 
       <Toolbar
         query={query}

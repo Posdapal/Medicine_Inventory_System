@@ -49,7 +49,7 @@ function CurrentStock() {
 
   return (
     <div>
-      <PageHeader title="Current Stock" subtitle="Stock Management / Current Stock" />
+      <PageHeader title="Current Stock" subtitle="Stock Management / Current Stock" description="Monitor available inventory and stock levels." />
 
       <Toolbar
         query={query}

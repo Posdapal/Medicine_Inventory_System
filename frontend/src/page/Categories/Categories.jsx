@@ -257,14 +257,12 @@ function Categories() {
 
   return (
     <div>
-      <PageHeader title="Categories" subtitle="Products / Categories" />
+      <PageHeader title="Categories" subtitle="Products / Categories" description="Organize products into clear inventory categories." onAdd={() => setIsAddOpen(true)} addLabel="Add Category" />
 
       <Toolbar
         query={query}
         setQuery={setQuery}
         placeholder="Search categories..."
-        onAdd={() => setIsAddOpen(true)}
-        addLabel="Add Category"
         extra={
           <>
             <ImportButton label="Import Categories" onImport={handleImport} />

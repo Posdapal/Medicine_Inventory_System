@@ -189,17 +189,15 @@ function StockIn() {
 
   return (
     <div>
-      <PageHeader title="Stock In" subtitle="Stock Management / Stock In" />
+      <PageHeader title="Stock In" subtitle="Stock Management / Stock In" description="Record and review incoming inventory." onAdd={() => setIsAddOpen(true)} addLabel="Create Stock In" />
 
       <Toolbar
         query={query}
         setQuery={setQuery}
         placeholder="Search stock-in records..."
-        onAdd={() => setIsAddOpen(true)}
-        addLabel="Create Stock In"
         extra={
           <>
-            <ImportButton label="Import Stock In (Optional)" onImport={handleImport} />
+            <ImportButton label="Import Stock In" onImport={handleImport} />
             <ActionButton icon={Download} label="Export Stock In" onClick={handleExport} />
           </>
         }
