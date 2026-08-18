@@ -1,8 +1,9 @@
 // Units.jsx — Products > Units
 import React, { useEffect, useState } from "react";
 import { Trash2, Edit2, Plus, ChevronRight } from "lucide-react";
-// import { unitsApi } from "../api/endpoints";
+import { unitsApi } from "../../api/endpoints";
 import { Table, Toolbar, Modal, FormField, inputClass } from "../../components/ui/Common";
+import Swal from 'sweetalert2';
 
 function UnitForm({ initialData, onSubmit, onClose, submitting }) {
   const [form, setForm] = useState(initialData || { name: "", abbreviation: "" });
@@ -89,13 +90,50 @@ function Units() {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm("Are you sure you want to delete this unit?")) return;
+     const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "You want to delete this record!",
+      icon: "warning",
+      background: "#0B1220",
+      color: "#ffffff",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Yes, delete it!",
+      showClass: {
+        popup: `
+        animate__animated
+        animate__fadeInUp
+        animate__faster
+      `,
+      },
+      hideClass: {
+        popup: `
+        animate__animated
+        animate__fadeOutDown
+        animate__faster
+      `,
+      },
+    });
+
+    // Cancel or dismiss (clicking outside, Esc) both land here and just stop
+    if (!result.isConfirmed) return;
+
     try {
       await unitsApi.remove(id);
       await loadUnits(query || undefined);
+
+      Swal.fire("Deleted!", "Unit has been deleted.", "success");
     } catch (err) {
-      alert(err.message);
+      Swal.fire("Error!", "An error occurred while deleting the unit.", "error");
     }
+    // if (!confirm("Are you sure you want to delete this unit?")) return;
+    // try {
+    //   await unitsApi.remove(id);
+    //   await loadUnits(query || undefined);
+    // } catch (err) {
+    //   alert(err.message);
+    // }
   };
 
   return (

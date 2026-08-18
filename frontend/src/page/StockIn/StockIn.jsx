@@ -4,12 +4,13 @@
 // received_quantity, purchase_price, tied to a supplier and reference_number.
 import { useEffect, useState } from "react";
 import { Trash2, Download } from "lucide-react";
-// import { stockApi, productsApi, suppliersApi } from "../api/endpoints";
+import { stockApi, productsApi, suppliersApi } from "../../api/endpoints";
 import {
   PageHeader, Badge, Table, Toolbar, Modal, FormField, inputClass,
   ImportButton, ActionButton,
 } from "../../components/ui/Common";
 import { downloadCsv, parseCsvFile } from "../../utils/ExportUtils";
+import Swal from 'sweetalert2';
 
 const CSV_HEADERS = [
   "product", "supplier", "batch_number", "manufacture_date", "expiry_date",
@@ -144,13 +145,50 @@ function StockIn() {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm("Remove this stock-in record?")) return;
+     const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "You want to delete this record!",
+      background: "#0B1220",
+      color: "#ffffff",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Yes, delete it!",
+      showClass: {
+        popup: `
+          animate__animated
+          animate__fadeInUp
+          animate__faster
+        `,
+      },
+      hideClass: {
+        popup: `
+          animate__animated
+          animate__fadeOutDown
+          animate__faster
+        `,
+      },
+    });
+
+    // Cancel or dismiss (clicking outside, Esc) both land here and just stop
+    if (!result.isConfirmed) return;
+
     try {
-      await stockApi.stockIn.remove(id);
+      await stockApi.remove(id);
       await loadRows(query || undefined);
+
+      Swal.fire("Deleted!", "StockIn has been deleted.", "success");
     } catch (err) {
-      alert(err.message);
+      Swal.fire("Error!", "An error occurred while deleting the stockin.", "error");
     }
+    // if (!confirm("Remove this stock-in record?")) return;
+    // try {
+    //   await stockApi.stockIn.remove(id);
+    //   await loadRows(query || undefined);
+    // } catch (err) {
+    //   alert(err.message);
+    // }
   };
 
   const handleExport = () => {

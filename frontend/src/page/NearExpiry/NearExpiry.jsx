@@ -2,7 +2,7 @@
 // Reflects PRODUCT_BATCHES filtered by expiry_date: batch_number,
 // manufacture_date, expiry_date, available_quantity.
 import { useEffect, useState } from "react";
-// import { expiryApi } from "../api/endpoints";
+import { expiryApi } from "../../api/endpoints";
 import { PageHeader, Badge, Table, Toolbar, ExportGroup } from "../../components/ui/Common";
 import { downloadCsv, printTable } from "../../utils/ExportUtils";
 

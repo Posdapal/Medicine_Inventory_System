@@ -1,7 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { reportsApi } from "../../api/endpoints";
-import Swal from 'sweetalert2';
-import { PageHeader } from "../../components/ui/Common";
+
+function PageHeader({ title, subtitle, action }) {
+  return (
+    <div className="flex items-start justify-between mb-6">
+      <div>
+        <h1 className="text-2xl font-semibold text-[#E7ECF6] tracking-tight">{title}</h1>
+        {subtitle && <p className="text-sm text-[#8B96AE] mt-1">{subtitle}</p>}
+      </div>
+      {action}
+    </div>
+  );
+}
 
 function Card({ children, className = "" }) {
   return <div className={`bg-[#141E33] border border-[#1E2A45] rounded-xl ${className}`}>{children}</div>;
@@ -58,11 +68,12 @@ function Table({ columns, rows }) {
 
 // UI label <-> backend report_type enum
 const REPORT_TYPES = [
-  { label: "Medicine Usage", value: "medicine_usage" },
-  { label: "Medicine Stock", value: "medicine_stock" },
-  { label: "Patients", value: "patients" },
-  { label: "Suppliers", value: "suppliers" },
-  { label: "Products", value: "products" },
+  { label: "Inventory Report", value: "inventory" },
+  { label: "Stock In Report", value: "stock_in" },
+  { label: "Stock Out Report", value: "stock_out" },
+  { label: "Stock Movement Report", value: "stock_movement" },
+  { label: "Low Stock Report", value: "low_stock" },
+  { label: "Near Expiry Report", value: "near_expiry" },
 ];
 
 function Reports() {
@@ -108,89 +119,28 @@ function Reports() {
     }
   };
 
-  // const handleSave = async () => {
-  //   if (!generated) return;
-  //   const title = prompt("Title for this saved report:", `${reportType.replace("_", " ")} snapshot`);
-  //   if (!title) return;
-  //   try {
-  //     await reportsApi.save({
-  //       title,
-  //       report_type: reportType,
-  //       date_range_start: dateFrom || undefined,
-  //       date_range_end: dateTo || undefined,
-  //       data_snapshot: generated.data,
-  //     });
-  //     await loadSavedReports();
-  //     alert("Report saved.");
-  //   } catch (err) {
-  //     alert(err.message);
-  //   }
-  // };
-
   const handleSave = async () => {
-  if (!generated) return;
-
-  const result = await Swal.fire({
-    title: "Save this report?",
-    input: "text",
-    inputLabel: "Title",
-    inputValue: `${reportType.replace("_", " ")} snapshot`,
-    inputPlaceholder: "Title for this saved report",
-    inputValidator: (value) => {
-      if (!value) return "Please enter a title";
-    },
-    showDenyButton: true,
-    showCancelButton: true,
-    confirmButtonText: "Save",
-    denyButtonText: `Don't save`,
-    background: "#141E33",
-    color: "#ffffff",
-  });
-
-  // Cancel (Esc / clicking outside) — do nothing
-  if (result.isDismissed) return;
-
-  // "Don't save" — acknowledge and stop
-  if (result.isDenied) {
-    Swal.fire({
-      title: "Changes are not saved",
-      icon: "info",
-      background: "#141E33",
-      color: "#ffffff",
-    });
-    return;
-  }
-
-  // "Save" — result.value holds whatever was typed in the input
-  try {
-    await reportsApi.save({
-      title: result.value,
-      report_type: reportType,
-      date_range_start: dateFrom || undefined,
-      date_range_end: dateTo || undefined,
-      data_snapshot: generated.data,
-    });
-    await loadSavedReports();
-    Swal.fire({
-      title: "Saved!",
-      icon: "success",
-      background: "#141E33",
-      color: "#ffffff",
-    });
-  } catch (err) {
-    Swal.fire({
-      title: "Error",
-      text: err.message,
-      icon: "error",
-      background: "#141E33",
-      color: "#ffffff",
-    });
-  }
-};
+    if (!generated) return;
+    const title = prompt("Title for this saved report:", `${reportType.replace("_", " ")} snapshot`);
+    if (!title) return;
+    try {
+      await reportsApi.save({
+        title,
+        report_type: reportType,
+        date_range_start: dateFrom || undefined,
+        date_range_end: dateTo || undefined,
+        data_snapshot: generated.data,
+      });
+      await loadSavedReports();
+      alert("Report saved.");
+    } catch (err) {
+      alert(err.message);
+    }
+  };
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="Reports" subtitle="Reports / Overview" description="Generate and revisit saved report snapshots." />
+    <div>
+      <PageHeader title="Reports" subtitle="Generate and revisit saved report snapshots" />
 
       <Card className="p-5 mb-5">
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
@@ -272,3 +222,4 @@ function Reports() {
 }
 
 export default Reports;
+

@@ -51,7 +51,7 @@ function Settings() {
   const [saving, setSaving] = useState(false);
   const [language, setLanguage] = useState("English");
   const [profile, setProfile] = useState({ full_name: "", email: "", address: "", date_of_birth: "", gender: "" });
-  const [preferences, setPreferences] = useState({ notifications_email: false, notifications_sms: false });
+  const [preferences, setPreferences] = useState({ notifications_telegram: true, notifications_email: true });
   const [passwordForm, setPasswordForm] = useState({ current_password: "", new_password: "", confirm_password: "" });
 
   const tabs = [
@@ -72,8 +72,8 @@ function Settings() {
           gender: data.gender || "",
         });
         setPreferences({
+          notifications_telegram: !!data.notifications_telegram,
           notifications_email: !!data.notifications_email,
-          notifications_sms: !!data.notifications_sms,
         });
       } catch (err) {
         setError(err.message);
@@ -154,7 +154,7 @@ function Settings() {
   return (
     <div className="w-full">
       <header className="mb-6 rounded-2xl border border-[#1E2A45] bg-[#111A2C]/90 px-5 py-5 shadow-xl shadow-black/10 sm:px-6">
-        <div className="mb-3 flex items-center gap-1.5 text-xs font-medium text-[#7D8AA3]">
+        <div className="mb-3 flex items-center gap-1.5 text-xs font-medium text-[#5e5e5e]">
           <span>Settings</span><span aria-hidden="true">/</span><span className="text-teal-400">Account Center</span>
         </div>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -164,7 +164,7 @@ function Settings() {
             <span className="text-xs text-slate-600">•</span>
             <span className="text-xs text-slate-500">Secure workspace</span>
           </div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-50 sm:text-3xl">Settings</h2>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-300 sm:text-3xl">Settings</h2>
           <p className="mt-2 max-w-xl text-sm leading-relaxed text-slate-400">
             Manage your personal information, workspace preferences, and account security.
           </p>
@@ -189,9 +189,9 @@ function Settings() {
         <Tabs tabs={tabs} active={tab} onChange={setTab} />
 
         <Card className="overflow-hidden">
-          <div className="border-b border-slate-800 bg-gradient-to-r from-slate-900 to-teal-950/20 px-5 py-5 sm:px-7">
+          <div className="border-b border-slate-100 bg-shadow-black/10 from-slate-100 to-teal-100 px-5 py-5 sm:px-7">
             <div className="flex items-center gap-3">
-              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-teal-400/10 text-teal-300">
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-teal-50 text-teal-300">
                 {tab === "profile" && <UserRound size={21} />}
                 {tab === "preferences" && <Palette size={21} />}
                 {tab === "security" && <LockKeyhole size={21} />}
@@ -200,7 +200,7 @@ function Settings() {
                 <h3 className="font-semibold text-slate-100">
                   {tab === "profile" ? "Personal information" : tab === "preferences" ? "Workspace preferences" : "Password & security"}
                 </h3>
-                <p className="mt-0.5 text-xs text-slate-500">
+                <p className="mt-0.5 text-xs text-slate-100">
                   {tab === "profile" ? "Keep your account details accurate and up to date." : tab === "preferences" ? "Personalize how the system works for you." : "Use a strong, unique password to protect your account."}
                 </p>
               </div>
@@ -238,8 +238,8 @@ function Settings() {
                 <div>
                   <div className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-200"><BellRing size={16} className="text-teal-300" /> Notification Preference</div>
                   <div className="grid gap-3 md:grid-cols-2">
-                    <Toggle checked={preferences.notifications_email} onChange={() => togglePreference("notifications_email")} label="Email notifications" description="Receive stock and expiry alerts by email." />
-                    <Toggle checked={preferences.notifications_sms} onChange={() => togglePreference("notifications_sms")} label="SMS notifications" description="Receive urgent inventory alerts by SMS." />
+                    <Toggle checked={preferences.notifications_telegram} onChange={() => togglePreference("notifications_telegram")} label="Telegram notifications" description="Receive stock and expiry alerts by Telegram" />
+                    <Toggle checked={preferences.notifications_email} onChange={() => togglePreference("notifications_email")} label="Email notifications" description="Receive urgent inventory alerts by Email." />
                   </div>
                 </div>
               </div>
@@ -262,8 +262,8 @@ function Settings() {
                     <ChecklistItem valid={passwordChecks.special}>One special character</ChecklistItem>
                     <ChecklistItem valid={passwordForm.confirm_password !== "" && passwordForm.new_password === passwordForm.confirm_password}>Passwords match</ChecklistItem>
                   </ul>
-                  <div className="mt-5 flex gap-2 rounded-xl bg-teal-400/[0.06] p-3 text-xs leading-relaxed text-teal-100/60">
-                    <Mail size={15} className="mt-0.5 shrink-0 text-teal-300" />
+                  <div className="mt-5 flex gap-2 rounded-xl bg-teal-400/[0.06] p-3 text-xs leading-relaxed text-teal-500">
+                    <Mail size={15} className="mt-0.5 shrink-0 text-teal-400" />
                     Never share your password or verification details with anyone.
                   </div>
                 </div>

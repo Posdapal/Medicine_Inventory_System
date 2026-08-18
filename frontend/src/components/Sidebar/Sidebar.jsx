@@ -19,6 +19,7 @@ import {
   FaUsersCog,
   FaCog,
   FaProductHunt,
+  FaUsersCog,
 } from "react-icons/fa";
 import { CiLogout } from "react-icons/ci";
 
@@ -61,6 +62,13 @@ const Sidebar = () => {
       path: "/reports",
       icon: <FaChartBar />,
       color: "text-indigo-500",
+    },
+
+    {
+      name: "Users",
+      path: "users",
+      icon: <FaUsersCog/>,
+      color: "text-yellow-500",
     },
 
     {

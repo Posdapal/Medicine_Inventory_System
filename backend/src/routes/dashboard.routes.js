@@ -5,8 +5,6 @@ const c = require('../controllers/dashboard.controller');
 router.use(verifyToken);
 
 router.get('/summary', c.getSummary);
-router.get('/usage-chart', c.getUsageChart);
-router.get('/stock-chart', c.getStockChart);
-router.get('/low-stock', c.getLowStock);
+router.get('/stock-in-out-chart', c.getStockInOutChart);
 
 module.exports = router;

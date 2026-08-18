@@ -1,48 +1,50 @@
 const { query, ok, fail, asyncHandler } = require('../utils/helper');
 
-const BASE_SELECT = `
-  SELECT p.*, c.name AS category_name, s.name AS supplier_name
-  FROM products p
-  JOIN categories c ON c.id = p.category_id
-  LEFT JOIN suppliers s ON s.id = p.supplier_id
-`;
-
-// GET /api/products?search=&category_id=&low_stock=true
+// GET /api/products?search=&category_id=&status=
 const getAll = asyncHandler(async (req, res) => {
-  const { search, category_id, low_stock } = req.query;
+  const { search, category_id, status } = req.query;
   const conditions = [];
   const params = [];
 
-  if (search) { conditions.push('p.name LIKE ?'); params.push(`%${search}%`); }
-  if (category_id) { conditions.push('p.category_id = ?'); params.push(category_id); }
-  if (low_stock === 'true') { conditions.push('p.stock_quantity <= p.reorder_level'); }
+  if (search) {
+    conditions.push('(product_name LIKE ? OR product_code LIKE ? OR generic_name LIKE ?)');
+    params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+  }
+  if (category_id) { conditions.push('category_id = ?'); params.push(category_id); }
+  if (status) { conditions.push('status = ?'); params.push(status); }
 
-  let sql = BASE_SELECT;
+  let sql = 'SELECT * FROM v_products';
   if (conditions.length) sql += ' WHERE ' + conditions.join(' AND ');
-  sql += ' ORDER BY p.name';
+  sql += ' ORDER BY product_name';
 
   const rows = await query(sql, params);
   return ok(res, rows);
 });
 
-// GET /api/products/:id
+// GET /api/products/:id  (includes its batches)
 const getById = asyncHandler(async (req, res) => {
-  const rows = await query(`${BASE_SELECT} WHERE p.id = ?`, [req.params.id]);
+  const { id } = req.params;
+  const rows = await query('SELECT * FROM v_products WHERE id = ?', [id]);
   if (!rows[0]) return fail(res, 'Product not found', 404);
-  return ok(res, rows[0]);
+
+  const batches = await query(
+    'SELECT * FROM product_batches WHERE product_id = ? ORDER BY expiry_date IS NULL, expiry_date ASC',
+    [id]
+  );
+  return ok(res, { ...rows[0], batches });
 });
 
 // POST /api/products
 const create = asyncHandler(async (req, res) => {
-  const { name, sku, category_id, supplier_id, unit, price, stock_quantity, reorder_level, description, image_url } = req.body;
-  if (!name || !category_id) return fail(res, 'Name and category are required', 400);
+  const { product_code, product_name, generic_name, category_id, unit_id, minimum_stock, status } = req.body;
+  if (!product_code || !product_name) return fail(res, 'Product code and product name are required', 400);
 
   const result = await query(
-    `INSERT INTO products (name, sku, category_id, supplier_id, unit, price, stock_quantity, reorder_level, description, image_url)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO products (category_id, unit_id, product_code, product_name, generic_name, minimum_stock, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [
-      name, sku || null, category_id, supplier_id || null, unit || 'unit', price || 0,
-      stock_quantity || 0, reorder_level || 10, description || null, image_url || null,
+      category_id || null, unit_id || null, product_code, product_name,
+      generic_name || null, minimum_stock || 0, status || 'active',
     ]
   );
   return ok(res, { id: result.insertId }, 'Product created', 201);
@@ -51,12 +53,14 @@ const create = asyncHandler(async (req, res) => {
 // PUT /api/products/:id
 const update = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { name, sku, category_id, supplier_id, unit, price, stock_quantity, reorder_level, description, image_url } = req.body;
+  const { product_code, product_name, generic_name, category_id, unit_id, minimum_stock, status } = req.body;
+  if (!product_code || !product_name) return fail(res, 'Product code and product name are required', 400);
+
   await query(
     `UPDATE products
-     SET name=?, sku=?, category_id=?, supplier_id=?, unit=?, price=?, stock_quantity=?, reorder_level=?, description=?, image_url=?
+     SET category_id=?, unit_id=?, product_code=?, product_name=?, generic_name=?, minimum_stock=?, status=?
      WHERE id=?`,
-    [name, sku, category_id, supplier_id, unit, price, stock_quantity, reorder_level, description, image_url || null, id]
+    [category_id || null, unit_id || null, product_code, product_name, generic_name || null, minimum_stock || 0, status || 'active', id]
   );
   return ok(res, null, 'Product updated');
 });

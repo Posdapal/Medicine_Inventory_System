@@ -1,7 +1,29 @@
 import { useEffect, useState } from "react";
-import { Search, Plus, Trash2, X, Edit2 } from "lucide-react";
-import { usersApi } from "../../api/endpoints";
-import Swal from 'sweetalert2';
+import { Search, Plus, Trash2, X, Edit2, ShieldCheck } from "lucide-react";
+import { usersApi, permissionsApi } from "../../api/endpoints";
+import Swal from "sweetalert2";
+
+// Modules that carry per-user CRUD permissions. Keep in sync with the
+// backend's VALID_MODULES (src/middleware/auth.middleware.js).
+const MODULES = [
+  { key: "products", label: "Products" },
+  { key: "suppliers", label: "Suppliers" },
+  { key: "categories", label: "Categories" },
+  { key: "stock", label: "Stock In/Out" },
+  { key: "reports", label: "Reports" },
+];
+const ACTIONS = [
+  { key: "can_create", label: "Create" },
+  { key: "can_read", label: "Read" },
+  { key: "can_update", label: "Update" },
+  { key: "can_delete", label: "Delete" },
+];
+
+// Role names as stored in the `roles` table (see medicine_inventory.sql seed data).
+// Keep this in sync with the DB -- do not use "admin"/"user", those don't exist as role names.
+const ROLE_ADMIN = "Administrator";
+const ROLE_STAFF = "Staff";
+const isAdminRole = (role) => (role || "").toLowerCase() === ROLE_ADMIN.toLowerCase();
 
 function PageHeader({ title, subtitle, action }) {
   return (
@@ -88,11 +110,11 @@ function Table({ columns, rows }) {
   );
 }
 
-function Modal({ isOpen, onClose, title, children }) {
+function Modal({ isOpen, onClose, title, children, wide }) {
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="w-full max-w-md bg-[#0F1626] border border-[#1E2A45] rounded-xl shadow-2xl overflow-hidden">
+      <div className={`w-full ${wide ? "max-w-2xl" : "max-w-md"} bg-[#0F1626] border border-[#1E2A45] rounded-xl shadow-2xl overflow-hidden`}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#1E2A45]">
           <h3 className="text-lg font-medium text-[#E7ECF6]">{title}</h3>
           <button onClick={onClose} className="text-[#5D6B85] hover:text-[#E7ECF6] transition-colors">
@@ -111,7 +133,7 @@ function mapUserFromApi(u) {
     name: u.full_name,
     username: u.username,
     email: u.email,
-    role: u.role,
+    role: u.role, // "Administrator" or "Staff", straight from roles.name via the API
     status: u.status,
   };
 }
@@ -122,7 +144,7 @@ function mapUserFromApi(u) {
 function UserForm({ initialData, onSubmit, onClose, submitting }) {
   const isEdit = !!initialData;
   const [formData, setFormData] = useState(
-    initialData || { name: "", username: "", email: "", password: "", role: "user", status: "active" }
+    initialData || { name: "", username: "", email: "", password: "", role: ROLE_STAFF, status: "active" }
   );
 
   const handleSubmit = (e) => {
@@ -186,8 +208,8 @@ function UserForm({ initialData, onSubmit, onClose, submitting }) {
             onChange={(e) => setFormData({ ...formData, role: e.target.value })}
             className="w-full bg-[#070B12] border border-[#1E2A45] rounded-lg px-3 py-2 text-sm text-[#E7ECF6] focus:outline-none focus:ring-2 focus:ring-blue-500/40"
           >
-            <option value="user">User</option>
-            <option value="admin">Admin</option>
+            <option value={ROLE_STAFF}>Staff</option>
+            <option value={ROLE_ADMIN}>Administrator</option>
           </select>
         </div>
         <div>
@@ -223,6 +245,141 @@ function UserForm({ initialData, onSubmit, onClose, submitting }) {
   );
 }
 
+// Module x CRUD-action checkbox grid. Admin accounts get a read-only
+// "full access" notice instead, since admins can't have permissions edited.
+function PermissionsForm({ targetUser, onClose, submitting, onSave }) {
+  const [loading, setLoading] = useState(true);
+  const [permissions, setPermissions] = useState(null); // { module: { can_create, can_read, can_update, can_delete } }
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const { data } = await permissionsApi.getForUser(targetUser.id);
+        if (!cancelled) setPermissions(data.permissions);
+      } catch (err) {
+        if (!cancelled) setError(err.message);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [targetUser.id]);
+
+  const toggle = (moduleKey, actionKey) => {
+    setPermissions((prev) => ({
+      ...prev,
+      [moduleKey]: { ...prev[moduleKey], [actionKey]: !prev[moduleKey][actionKey] },
+    }));
+  };
+
+  const toggleRow = (moduleKey, on) => {
+    setPermissions((prev) => ({
+      ...prev,
+      [moduleKey]: {
+        can_create: on, can_read: on, can_update: on, can_delete: on,
+      },
+    }));
+  };
+
+  if (isAdminRole(targetUser.role)) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 text-sm text-[#D7DEEB] bg-blue-500/10 border border-blue-500/30 rounded-lg px-4 py-3">
+          <ShieldCheck size={16} className="text-blue-400 shrink-0" />
+          Admin accounts always have full create/read/update/delete access everywhere.
+          Permissions can only be customized for staff (role = "Staff").
+        </div>
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 border border-[#1E2A45] text-[#8B96AE] hover:text-[#E7ECF6] hover:bg-white/[0.02] text-sm font-medium rounded-lg transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) return <p className="text-sm text-[#8B96AE]">Loading permissions...</p>;
+  if (error) return <p className="text-sm text-rose-400">{error}</p>;
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-[#8B96AE]">
+        Choose exactly which modules <span className="text-[#E7ECF6] font-medium">{targetUser.name}</span> can create,
+        read, update, or delete. Unchecked = no access.
+      </p>
+
+      <div className="overflow-x-auto border border-[#1E2A45] rounded-lg">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-[#1E2A45] text-left text-[#8B96AE] text-xs uppercase tracking-wide">
+              <th className="px-3 py-2 font-medium">Module</th>
+              {ACTIONS.map((a) => (
+                <th key={a.key} className="px-3 py-2 font-medium text-center">{a.label}</th>
+              ))}
+              <th className="px-3 py-2 font-medium text-center">All</th>
+            </tr>
+          </thead>
+          <tbody>
+            {MODULES.map((m) => {
+              const row = permissions[m.key] || {};
+              const allOn = ACTIONS.every((a) => row[a.key]);
+              return (
+                <tr key={m.key} className="border-b border-[#1E2A45] last:border-0">
+                  <td className="px-3 py-2 text-[#D7DEEB]">{m.label}</td>
+                  {ACTIONS.map((a) => (
+                    <td key={a.key} className="px-3 py-2 text-center">
+                      <input
+                        type="checkbox"
+                        checked={!!row[a.key]}
+                        onChange={() => toggle(m.key, a.key)}
+                        className="w-4 h-4 accent-blue-600 cursor-pointer"
+                      />
+                    </td>
+                  ))}
+                  <td className="px-3 py-2 text-center">
+                    <input
+                      type="checkbox"
+                      checked={allOn}
+                      onChange={(e) => toggleRow(m.key, e.target.checked)}
+                      className="w-4 h-4 accent-emerald-500 cursor-pointer"
+                    />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex justify-end gap-3 pt-2">
+        <button
+          type="button"
+          onClick={onClose}
+          className="px-4 py-2 border border-[#1E2A45] text-[#8B96AE] hover:text-[#E7ECF6] hover:bg-white/[0.02] text-sm font-medium rounded-lg transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          disabled={submitting}
+          onClick={() => onSave(permissions)}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors"
+        >
+          {submitting ? "Saving..." : "Save Permissions"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function Users() {
   const [usersList, setUsersList] = useState([]);
   const [query, setQuery] = useState("");
@@ -231,7 +388,8 @@ function Users() {
   const [submitting, setSubmitting] = useState(false);
 
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState(null);
+  const [editingUser, setEditingUser] = useState(null);      // basic profile edit
+  const [permissionsUser, setPermissionsUser] = useState(null); // permissions modal target
 
   const loadUsers = async (search) => {
     setLoading(true);
@@ -290,15 +448,32 @@ function Users() {
     }
   };
 
-  // const handleDeleteUser = async (id) => {
-  //   if (!confirm("Are you sure you want to delete this user?")) return;
-  //   try {
-  //     await usersApi.remove(id);
-  //     await loadUsers(query || undefined);
-  //   } catch (err) {
-  //     alert(err.message);
-  //   }
-  // };
+  const handleSavePermissions = async (permissions) => {
+    setSubmitting(true);
+    try {
+      await permissionsApi.updateForUser(permissionsUser.id, permissions);
+      setPermissionsUser(null);
+      Swal.fire({
+        title: "Saved",
+        text: "Permissions updated.",
+        icon: "success",
+        background: "#0B1220",
+        color: "#ffffff",
+        timer: 1400,
+        showConfirmButton: false,
+      });
+    } catch (err) {
+      Swal.fire({
+        title: "Error",
+        text: err.message,
+        icon: "error",
+        background: "#0B1220",
+        color: "#ffffff",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handleDeleteUser = async (id) => {
     const result = await Swal.fire({
@@ -311,20 +486,8 @@ function Users() {
       confirmButtonColor: "#3085d6",
       cancelButtonColor: "#d33",
       confirmButtonText: "Yes, delete it!",
-      showClass: {
-        popup: `
-        animate__animated
-        animate__fadeInUp
-        animate__faster
-      `,
-      },
-      hideClass: {
-        popup: `
-        animate__animated
-        animate__fadeOutDown
-        animate__faster
-      `,
-      },
+      showClass: { popup: "animate__animated animate__fadeInUp animate__faster" },
+      hideClass: { popup: "animate__animated animate__fadeOutDown animate__faster" },
     });
 
     // Cancel or dismiss (clicking outside, Esc) both land here and just stop
@@ -332,11 +495,10 @@ function Users() {
 
     try {
       await usersApi.remove(id);
-      await loadPatients(query || undefined);
-
-      Swal.fire("Deleted!", "Patient has been deleted.", "success");
+      await loadUsers(query || undefined);
+      Swal.fire("Deleted!", "User has been deleted.", "success");
     } catch (err) {
-      Swal.fire("Error!", "An error occurred while deleting the patient.", "error");
+      Swal.fire("Error!", "An error occurred while deleting the user.", "error");
     }
   };
 
@@ -361,7 +523,7 @@ function Users() {
             { key: "name", label: "Name" },
             { key: "username", label: "Username" },
             { key: "email", label: "Email" },
-            { key: "role", label: "Role", render: (r) => <Badge tone={r.role === "admin" ? "info" : "neutral"}>{r.role}</Badge> },
+            { key: "role", label: "Role", render: (r) => <Badge tone={isAdminRole(r.role) ? "info" : "neutral"}>{r.role}</Badge> },
             { key: "status", label: "Status", render: (r) => <Badge tone={r.status === "active" ? "good" : "neutral"}>{r.status}</Badge> },
             {
               key: "actions",
@@ -370,6 +532,9 @@ function Users() {
                 <div className="flex items-center gap-3">
                   <button onClick={() => setEditingUser(r)} className="text-[#5D6B85] hover:text-blue-400 transition-colors" title="Edit User">
                     <Edit2 size={15} />
+                  </button>
+                  <button onClick={() => setPermissionsUser(r)} className="text-[#5D6B85] hover:text-emerald-400 transition-colors" title="Manage Permissions">
+                    <ShieldCheck size={15} />
                   </button>
                   <button onClick={() => handleDeleteUser(r.id)} className="text-[#5D6B85] hover:text-rose-400 transition-colors" title="Delete User">
                     <Trash2 size={15} />
@@ -386,13 +551,24 @@ function Users() {
         <UserForm onSubmit={handleAddUser} onClose={() => setIsAddOpen(false)} submitting={submitting} />
       </Modal>
 
-      <Modal isOpen={!!editingUser} onClose={() => setEditingUser(null)} title="Update Account Permissions">
+      <Modal isOpen={!!editingUser} onClose={() => setEditingUser(null)} title="Edit User">
         {editingUser && (
           <UserForm
             initialData={editingUser}
             onSubmit={handleEditUser}
             onClose={() => setEditingUser(null)}
             submitting={submitting}
+          />
+        )}
+      </Modal>
+
+      <Modal isOpen={!!permissionsUser} onClose={() => setPermissionsUser(null)} title="Manage Access Permissions" wide>
+        {permissionsUser && (
+          <PermissionsForm
+            targetUser={permissionsUser}
+            onClose={() => setPermissionsUser(null)}
+            submitting={submitting}
+            onSave={handleSavePermissions}
           />
         )}
       </Modal>

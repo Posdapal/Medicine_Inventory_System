@@ -2,7 +2,7 @@
 // Shows available_quantity aggregated across each product's PRODUCT_BATCHES,
 // compared against minimum_stock.
 import { useEffect, useState } from "react";
-// import { stockApi } from "../api/endpoints";
+import { stockApi } from "../../api/endpoints";
 import { PageHeader, Badge, Table, Toolbar, ExportGroup } from "../../components/ui/Common";
 import { downloadCsv, printTable } from "../../utils/ExportUtils";
 

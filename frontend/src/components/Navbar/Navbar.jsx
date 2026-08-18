@@ -17,12 +17,22 @@ const Navbar = ({ onLogout }) => {
     return () => document.removeEventListener("mousedown", close);
   }, []);
 
+  // Normalize role so casing/naming differences ("Administrator", "admin", etc.) don't break the check
+  const roleName = user?.role || "Staff";
+  const isAdmin = roleName.toLowerCase() === "administrator" || roleName.toLowerCase() === "admin";
+
+  const welcomeLabel = isAdmin ? "Welcome back, Admin" : "Welcome back, Staff";
+  const displayRole = isAdmin ? "Administrator" : roleName; // e.g. "Staff", "User", or whatever role name you store
+  const signedInAsLabel = isAdmin ? "Signed in as admin" : `Signed in as ${roleName.toLowerCase()}`;
+
   return (
     <header className="sticky top-0 z-30 flex h-[72px] items-center justify-between border-b border-slate-800/80 bg-slate-950/80 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-teal-400/80">Welcome back,</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-teal-400/80">
+          {welcomeLabel},
+        </p>
         <h1 className="mt-0.5 text-lg font-semibold tracking-tight text-slate-100">
-          {user?.full_name || "Admin User"} <span aria-hidden="true">👋</span>
+          {user?.full_name || "Admin Staff"} <span aria-hidden="true">👋</span>
         </h1>
       </div>
       <div className="flex items-center gap-2 sm:gap-3">
@@ -41,19 +51,23 @@ const Navbar = ({ onLogout }) => {
         </button>
         <div className="relative" ref={menuRef}>
           <button onClick={() => setOpen((value) => !value)} className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900 p-1.5 pr-2.5 transition hover:border-slate-700">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-teal-400 to-cyan-600 text-xs font-bold text-slate-950">
-            {user?.full_name ? user.full_name.charAt(0).toUpperCase() : "A"}
-          </div>
-          <span className="hidden text-left sm:block">
-            <span className="block text-xs font-semibold text-slate-200">{user?.full_name || "Admin User"}</span>
-            <span className="block text-[10px] text-slate-500">Administrator</span>
-          </span>
-          <ChevronDown size={14} className={`text-slate-500 transition ${open ? "rotate-180" : ""}`} />
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-teal-400 to-cyan-600 text-xs font-bold text-slate-950">
+              {user?.full_name ? user.full_name.charAt(0).toUpperCase() : "AF"}
+            </div>
+            <span className="hidden text-left sm:block">
+              <span className="block text-xs font-semibold text-slate-200">{user?.full_name || "Admin Staff"}</span>
+              <span className="block text-[10px] text-slate-500">{displayRole}</span>
+            </span>
+            <ChevronDown size={14} className={`text-slate-500 transition ${open ? "rotate-180" : ""}`} />
           </button>
           {open && (
             <div className="absolute right-0 mt-2 w-52 overflow-hidden rounded-xl border border-slate-800 bg-slate-900 p-1.5 shadow-2xl shadow-black/40">
-              <div className="flex items-center gap-2 px-3 py-2 text-xs text-slate-400"><UserRound size={14} /> Signed in as admin</div>
-              <button onClick={onLogout} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-rose-300 hover:bg-rose-400/10"><LogOut size={15} /> Log out</button>
+              <div className="flex items-center gap-2 px-3 py-2 text-xs text-slate-400">
+                <UserRound size={14} /> {signedInAsLabel}
+              </div>
+              <button onClick={onLogout} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-rose-300 hover:bg-rose-400/10">
+                <LogOut size={15} /> Log out
+              </button>
             </div>
           )}
         </div>

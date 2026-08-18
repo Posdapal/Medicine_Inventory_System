@@ -4,18 +4,27 @@ const generateToken = require('../utils/generateToken');
 
 const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 
+// user here is the JOINed row: { id, full_name, email, password, role (from roles.name),
+// status, must_change_password, created_at, updated_at }
 function publicUser(user) {
   return {
     id: user.id,
     fullName: user.full_name,
     email: user.email,
-    role: user.role,
+    role: user.role.toLowerCase(), // "administrator" or "staff" -- matches ADMIN_ROLE in auth.middleware.js
     status: user.status,
     mustChangePassword: Boolean(user.must_change_password),
     createdAt: user.created_at,
     updatedAt: user.updated_at,
   };
 }
+
+const USER_WITH_ROLE_SELECT = `
+  SELECT u.id, u.full_name, u.email, u.password, r.name AS role, u.status,
+         u.must_change_password, u.created_at, u.updated_at
+  FROM users u
+  JOIN roles r ON r.id = u.role_id
+`;
 
 // POST /api/auth/login
 const login = asyncHandler(async (req, res) => {
@@ -24,7 +33,7 @@ const login = asyncHandler(async (req, res) => {
 
   if (!email || !password) return fail(res, 'Email and password are required', 400);
 
-  const rows = await query('SELECT * FROM users WHERE LOWER(email) = ? LIMIT 1', [email]);
+  const rows = await query(`${USER_WITH_ROLE_SELECT} WHERE LOWER(u.email) = ? LIMIT 1`, [email]);
   const user = rows[0];
   if (!user || !(await bcrypt.compare(password, user.password))) {
     return fail(res, 'Invalid email or password', 401);
@@ -33,7 +42,7 @@ const login = asyncHandler(async (req, res) => {
 
   return ok(
     res,
-    { token: generateToken(user), user: publicUser(user) },
+    { token: generateToken(publicUser(user)), user: publicUser(user) },
     'Login successful'
   );
 });
@@ -54,7 +63,7 @@ const changePassword = asyncHandler(async (req, res) => {
     );
   }
 
-  const rows = await query('SELECT * FROM users WHERE id = ? LIMIT 1', [req.user.id]);
+  const rows = await query(`${USER_WITH_ROLE_SELECT} WHERE u.id = ? LIMIT 1`, [req.user.id]);
   const user = rows[0];
   if (!user) return fail(res, 'User not found', 404);
   if (!(await bcrypt.compare(currentPassword, user.password))) {
@@ -73,18 +82,14 @@ const changePassword = asyncHandler(async (req, res) => {
   const updatedUser = { ...user, must_change_password: 0 };
   return ok(
     res,
-    { token: generateToken(updatedUser), user: publicUser(updatedUser) },
+    { token: generateToken(publicUser(updatedUser)), user: publicUser(updatedUser) },
     'Password changed successfully'
   );
 });
 
 // GET /api/auth/profile
 const profile = asyncHandler(async (req, res) => {
-  const rows = await query(
-    `SELECT id, full_name, email, role, status, must_change_password, created_at, updated_at
-     FROM users WHERE id = ? LIMIT 1`,
-    [req.user.id]
-  );
+  const rows = await query(`${USER_WITH_ROLE_SELECT} WHERE u.id = ? LIMIT 1`, [req.user.id]);
   if (!rows[0]) return fail(res, 'User not found', 404);
   if (rows[0].status !== 'active') return fail(res, 'This account is inactive', 403);
   return ok(res, publicUser(rows[0]));

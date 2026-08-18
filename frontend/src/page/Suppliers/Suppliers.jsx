@@ -285,7 +285,7 @@ function Suppliers() {
 
     try {
       await suppliersApi.remove(id);
-      await loadPatients(query || undefined);
+      await loadSuppliers(query || undefined);
 
       Swal.fire("Deleted!", "Supplier has been deleted.", "success");
     } catch (err) {

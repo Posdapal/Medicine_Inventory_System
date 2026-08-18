@@ -1,12 +1,12 @@
 const router = require('express').Router();
-const { verifyToken } = require('../middleware/auth.middleware');
+const { verifyToken, checkPermission } = require('../middleware/auth.middleware');
 const c = require('../controllers/categories.controller');
 
 router.use(verifyToken);
 
-router.get('/', c.getAll);
-router.post('/', c.create);
-router.put('/:id', c.update);
-router.delete('/:id', c.remove);
+router.get('/', checkPermission('categories', 'read'), c.getAll);
+router.post('/', checkPermission('categories', 'create'), c.create);
+router.put('/:id', checkPermission('categories', 'update'), c.update);
+router.delete('/:id', checkPermission('categories', 'delete'), c.remove);
 
 module.exports = router;

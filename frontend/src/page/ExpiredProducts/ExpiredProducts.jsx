@@ -1,7 +1,7 @@
 // ExpiredProducts.jsx — Expiry Management > Expired Products
 // Reflects PRODUCT_BATCHES whose expiry_date has passed.
 import { useEffect, useState } from "react";
-// import { expiryApi } from "../api/endpoints";
+import { expiryApi } from "../../api/endpoints";
 import { PageHeader, Badge, Table, Toolbar, ExportGroup } from "../../components/ui/Common";
 import { downloadCsv, printTable } from "../../utils/ExportUtils";
 

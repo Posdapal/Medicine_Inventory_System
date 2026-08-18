@@ -346,16 +346,6 @@ function Medicines() {
     }
   };
 
-  // const handleDeleteMedicine = async (id) => {
-  //   if (!confirm("Are you sure you want to delete this medicine record?")) return;
-  //   try {
-  //     await medicinesApi.remove(id);
-  //     await loadMedicines(query || undefined);
-  //   } catch (err) {
-  //     alert(err.message);
-  //   }
-  // };
-
    const handleDeleteMedicine = async (id) => {
       const result = await Swal.fire({
         title: "Are you sure?",

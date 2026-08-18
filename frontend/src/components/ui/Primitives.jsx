@@ -45,8 +45,8 @@ export function Alert({ title, children, action }) {
           <AlertCircle size={20} />
         </span>
         <div>
-          <p className="font-semibold text-amber-100">{title}</p>
-          <p className="mt-0.5 text-sm text-amber-100/65">{children}</p>
+          <p className="font-semibold text-amber-400">{title}</p>
+          <p className="mt-0.5 text-sm text-amber-400">{children}</p>
         </div>
       </div>
       {action}

@@ -5,8 +5,11 @@ const { query, ok, fail, asyncHandler } = require('../utils/helper');
 const getAll = asyncHandler(async (req, res) => {
   const search = req.query.search ? `%${req.query.search}%` : '%';
   const rows = await query(
-    `SELECT id, full_name, username, email, phone, role, status, created_at
-     FROM users WHERE full_name LIKE ? ORDER BY full_name`,
+    `SELECT u.id, u.full_name, u.username, u.email, r.name AS role, u.status, u.created_at
+     FROM users u
+     JOIN roles r ON r.id = u.role_id
+     WHERE u.full_name LIKE ?
+     ORDER BY u.full_name`,
     [search]
   );
   return ok(res, rows);
@@ -15,7 +18,10 @@ const getAll = asyncHandler(async (req, res) => {
 // GET /api/users/:id
 const getById = asyncHandler(async (req, res) => {
   const rows = await query(
-    'SELECT id, full_name, username, email, phone, role, status FROM users WHERE id = ?',
+    `SELECT u.id, u.full_name, u.username, u.email, r.name AS role, u.status
+     FROM users u
+     JOIN roles r ON r.id = u.role_id
+     WHERE u.id = ?`,
     [req.params.id]
   );
   if (!rows[0]) return fail(res, 'User not found', 404);
@@ -23,31 +29,48 @@ const getById = asyncHandler(async (req, res) => {
 });
 
 // POST /api/users
+// body: { full_name, username, email, password, role } -- role is a NAME, e.g. "Staff" or "Administrator"
 const create = asyncHandler(async (req, res) => {
-  const { full_name, username, email, password, phone, role } = req.body;
+  const { full_name, username, email, password, role } = req.body;
   if (!full_name || !username || !email || !password) {
     return fail(res, 'Full name, username, email and password are required', 400);
   }
 
+  // Resolve role name -> role_id. Defaults to "Staff" if not provided.
+  const roleName = role || 'Staff';
+  const roleRows = await query('SELECT id FROM roles WHERE name = ?', [roleName]);
+  if (!roleRows[0]) return fail(res, `Unknown role "${roleName}"`, 400);
+
   const hashed = await bcrypt.hash(password, 10);
   const result = await query(
-    `INSERT INTO users (full_name, username, email, password, phone, role)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [full_name, username, email, hashed, phone || null, role || 'user']
+    `INSERT INTO users (role_id, full_name, username, email, password)
+     VALUES (?, ?, ?, ?, ?)`,
+    [roleRows[0].id, full_name, username, email, hashed]
   );
-  // Every user gets a matching settings row (1-to-1 relationship)
-  await query('INSERT INTO user_settings (user_id) VALUES (?)', [result.insertId]);
 
   return ok(res, { id: result.insertId }, 'User created', 201);
 });
 
 // PUT /api/users/:id
+// body: { full_name, username, email, role, status } -- role is a NAME
 const update = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { full_name, username, email, phone, role, status } = req.body;
+  const { full_name, username, email, role, status } = req.body;
+
+  let role_id;
+  if (role) {
+    const roleRows = await query('SELECT id FROM roles WHERE name = ?', [role]);
+    if (!roleRows[0]) return fail(res, `Unknown role "${role}"`, 400);
+    role_id = roleRows[0].id;
+  } else {
+    const existing = await query('SELECT role_id FROM users WHERE id = ?', [id]);
+    if (!existing[0]) return fail(res, 'User not found', 404);
+    role_id = existing[0].role_id;
+  }
+
   await query(
-    `UPDATE users SET full_name=?, username=?, email=?, phone=?, role=?, status=? WHERE id=?`,
-    [full_name, username, email, phone, role, status, id]
+    `UPDATE users SET full_name=?, username=?, email=?, role_id=?, status=? WHERE id=?`,
+    [full_name, username, email, role_id, status, id]
   );
   return ok(res, null, 'User updated');
 });

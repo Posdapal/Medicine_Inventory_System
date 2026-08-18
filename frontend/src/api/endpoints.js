@@ -2,7 +2,9 @@ import axiosClient from "./axiosClient";
 
 // Every function here resolves to the backend's { success, message, data }
 // envelope (axiosClient's response interceptor already unwraps response.data
-// for you), so callers do `const { data } = await patientsApi.getAll()`.
+// for you). Field names throughout this file follow the ERD:
+// CATEGORIES, UNITS, PRODUCTS, PRODUCT_BATCHES, SUPPLIERS,
+// STOCK_TRANSACTIONS / STOCK_TRANSACTION_ITEMS, STOCK_MOVEMENTS.
 
 export const authApi = {
   login: (email, password) => axiosClient.post("/auth/login", { email, password }),
@@ -11,43 +13,27 @@ export const authApi = {
 
 export const dashboardApi = {
   summary: () => axiosClient.get("/dashboard/summary"),
-  usageChart: () => axiosClient.get("/dashboard/usage-chart"),
-  stockChart: () => axiosClient.get("/dashboard/stock-chart"),
-  lowStock: () => axiosClient.get("/dashboard/low-stock"),
+  stockInOutChart: () => axiosClient.get("/dashboard/stock-in-out-chart"),
 };
 
-export const patientsApi = {
-  getAll: (search) => axiosClient.get("/patients", { params: { search } }),
-  getById: (id) => axiosClient.get(`/patients/${id}`),
-  create: (data) => axiosClient.post("/patients", data),
-  update: (id, data) => axiosClient.put(`/patients/${id}`, data),
-  remove: (id) => axiosClient.delete(`/patients/${id}`),
-};
-
-export const medicinesApi = {
-  getAll: (params) => axiosClient.get("/medicines", { params }),
-  getById: (id) => axiosClient.get(`/medicines/${id}`),
-  stockHistory: (id) => axiosClient.get(`/medicines/${id}/stock-history`),
-  create: (data) => axiosClient.post("/medicines", data),
-  update: (id, data) => axiosClient.put(`/medicines/${id}`, data),
-  remove: (id) => axiosClient.delete(`/medicines/${id}`),
-};
-
-export const suppliersApi = {
-  getAll: (search) => axiosClient.get("/suppliers", { params: { search } }),
-  getById: (id) => axiosClient.get(`/suppliers/${id}`),
-  create: (data) => axiosClient.post("/suppliers", data),
-  update: (id, data) => axiosClient.put(`/suppliers/${id}`, data),
-  remove: (id) => axiosClient.delete(`/suppliers/${id}`),
-};
-
+// CATEGORIES: id, name, description, status
 export const categoriesApi = {
-  getAll: (type) => axiosClient.get("/categories", { params: { type } }),
+  getAll: (search) => axiosClient.get("/categories", { params: { search } }),
   create: (data) => axiosClient.post("/categories", data),
   update: (id, data) => axiosClient.put(`/categories/${id}`, data),
   remove: (id) => axiosClient.delete(`/categories/${id}`),
 };
 
+// UNITS: id, name, abbreviation
+export const unitsApi = {
+  getAll: (search) => axiosClient.get("/units", { params: { search } }),
+  create: (data) => axiosClient.post("/units", data),
+  update: (id, data) => axiosClient.put(`/units/${id}`, data),
+  remove: (id) => axiosClient.delete(`/units/${id}`),
+};
+
+// PRODUCTS: id, category_id, unit_id, product_code, product_name,
+// generic_name, minimum_stock, status
 export const productsApi = {
   getAll: (params) => axiosClient.get("/products", { params }),
   getById: (id) => axiosClient.get(`/products/${id}`),
@@ -56,12 +42,48 @@ export const productsApi = {
   remove: (id) => axiosClient.delete(`/products/${id}`),
 };
 
-export const prescriptionsApi = {
-  getAll: (params) => axiosClient.get("/prescriptions", { params }),
-  getById: (id) => axiosClient.get(`/prescriptions/${id}`),
-  create: (data) => axiosClient.post("/prescriptions", data),
-  updateStatus: (id, status) => axiosClient.patch(`/prescriptions/${id}/status`, { status }),
-  remove: (id) => axiosClient.delete(`/prescriptions/${id}`),
+// SUPPLIERS: id, supplier_code, supplier_name, contact_name, phone,
+// email, address, status
+export const suppliersApi = {
+  getAll: (search) => axiosClient.get("/suppliers", { params: { search } }),
+  getById: (id) => axiosClient.get(`/suppliers/${id}`),
+  create: (data) => axiosClient.post("/suppliers", data),
+  update: (id, data) => axiosClient.put(`/suppliers/${id}`, data),
+  remove: (id) => axiosClient.delete(`/suppliers/${id}`),
+};
+
+// STOCK_TRANSACTIONS (+ STOCK_TRANSACTION_ITEMS) and STOCK_MOVEMENTS.
+// Stock In / Stock Out both create a STOCK_TRANSACTION of the matching
+// transaction_type, carrying one or more line items; a PRODUCT_BATCH is
+// created (Stock In) or drawn down (Stock Out) per item.
+export const stockApi = {
+  stockIn: {
+    // params: { search }
+    getAll: (params) => axiosClient.get("/stock/in", { params }),
+    // data: { supplier_id, transaction_date, reference_number, items: [
+    //   { product_id, batch_number, manufacture_date, expiry_date, quantity, unit_price }
+    // ] }
+    create: (data) => axiosClient.post("/stock/in", data),
+    remove: (id) => axiosClient.delete(`/stock/in/${id}`),
+  },
+  stockOut: {
+    getAll: (params) => axiosClient.get("/stock/out", { params }),
+    // data: { reason, reference_number, transaction_date, items: [
+    //   { product_id, batch_id, quantity }
+    // ] }
+    create: (data) => axiosClient.post("/stock/out", data),
+    remove: (id) => axiosClient.delete(`/stock/out/${id}`),
+  },
+  // Aggregated available_quantity per product, from PRODUCT_BATCHES
+  current: (params) => axiosClient.get("/stock/current", { params }),
+  // STOCK_MOVEMENTS: movement_type, quantity_before, movement_quantity, quantity_after
+  history: (params) => axiosClient.get("/stock/history", { params }),
+};
+
+// PRODUCT_BATCHES filtered by expiry_date
+export const expiryApi = {
+  nearExpiry: (params) => axiosClient.get("/expiry/near", { params }),
+  expired: (params) => axiosClient.get("/expiry/expired", { params }),
 };
 
 export const reportsApi = {
@@ -69,6 +91,20 @@ export const reportsApi = {
   getAll: () => axiosClient.get("/reports"),
   getById: (id) => axiosClient.get(`/reports/${id}`),
   save: (data) => axiosClient.post("/reports", data),
+};
+
+export const settingsApi = {
+  get: () => axiosClient.get("/settings"),
+  updateProfile: (data) => axiosClient.put("/settings/profile", data),
+  updatePreferences: (data) => axiosClient.put("/settings/preferences", data),
+  updatePassword: (data) => axiosClient.put("/settings/password", data),
+  updateTwoFactor: (enabled) => axiosClient.put("/settings/two-factor", { enabled }),
+};
+
+// Add this export to your existing api/endpoints.js (next to usersApi)
+export const permissionsApi = {
+  getForUser: (userId) => axiosClient.get(`/permissions/${userId}`),
+  updateForUser: (userId, permissions) => axiosClient.put(`/permissions/${userId}`, { permissions }),
 };
 
 export const usersApi = {
@@ -79,10 +115,3 @@ export const usersApi = {
   remove: (id) => axiosClient.delete(`/users/${id}`),
 };
 
-export const settingsApi = {
-  get: () => axiosClient.get("/settings"),
-  updateProfile: (data) => axiosClient.put("/settings/profile", data),
-  updatePreferences: (data) => axiosClient.put("/settings/preferences", data),
-  updatePassword: (data) => axiosClient.put("/settings/password", data),
-  updateTwoFactor: (enabled) => axiosClient.put("/settings/two-factor", { enabled }),
-};

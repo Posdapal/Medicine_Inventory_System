@@ -2,7 +2,7 @@
 // Reflects the STOCK_MOVEMENTS entity: movement_type, quantity_before,
 // movement_quantity, quantity_after, tied to a product and batch.
 import { useEffect, useState } from "react";
-// import { stockApi } from "../api/endpoints";
+import { stockApi } from "../../api/endpoints";
 import { PageHeader, Badge, Table, Toolbar, ExportGroup } from "../../components/ui/Common";
 import { downloadCsv, printTable } from "../../utils/ExportUtils";
 

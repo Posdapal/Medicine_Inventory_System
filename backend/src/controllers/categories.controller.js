@@ -1,34 +1,23 @@
 const { query, ok, fail, asyncHandler } = require('../utils/helper');
 
-// GET /api/categories?type=medicine|product
+// GET /api/categories?search=
 const getAll = asyncHandler(async (req, res) => {
-  const { type } = req.query;
-  const table = type === 'product' ? 'products' : 'medicines';
-
-  const params = [];
-  let sql = `
-    SELECT c.*, COUNT(t.id) AS item_count
-    FROM categories c
-    LEFT JOIN ${table} t ON t.category_id = c.id
-  `;
-  if (type) {
-    sql += ' WHERE c.type = ?';
-    params.push(type);
-  }
-  sql += ' GROUP BY c.id ORDER BY c.name';
-
-  const rows = await query(sql, params);
+  const search = req.query.search ? `%${req.query.search}%` : '%';
+  const rows = await query(
+    'SELECT * FROM categories WHERE name LIKE ? ORDER BY name',
+    [search]
+  );
   return ok(res, rows);
 });
 
 // POST /api/categories
 const create = asyncHandler(async (req, res) => {
-  const { name, type, description } = req.body;
-  if (!name || !type) return fail(res, 'Name and type are required', 400);
+  const { name, description, status } = req.body;
+  if (!name) return fail(res, 'Category name is required', 400);
 
   const result = await query(
-    'INSERT INTO categories (name, type, description) VALUES (?, ?, ?)',
-    [name, type, description || null]
+    'INSERT INTO categories (name, description, status) VALUES (?, ?, ?)',
+    [name, description || null, status || 'active']
   );
   return ok(res, { id: result.insertId }, 'Category created', 201);
 });
@@ -36,8 +25,13 @@ const create = asyncHandler(async (req, res) => {
 // PUT /api/categories/:id
 const update = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { name, type, description } = req.body;
-  await query('UPDATE categories SET name=?, type=?, description=? WHERE id=?', [name, type, description, id]);
+  const { name, description, status } = req.body;
+  if (!name) return fail(res, 'Category name is required', 400);
+
+  await query(
+    'UPDATE categories SET name=?, description=?, status=? WHERE id=?',
+    [name, description || null, status || 'active', id]
+  );
   return ok(res, null, 'Category updated');
 });
 
