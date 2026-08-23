@@ -1,27 +1,95 @@
-// Units.jsx — Products > Units
 import React, { useEffect, useState } from "react";
 import { Trash2, Edit2, Plus, ChevronRight } from "lucide-react";
 import { unitsApi } from "../../api/endpoints";
 import { Table, Toolbar, Modal, FormField, inputClass } from "../../components/ui/Common";
 import Swal from 'sweetalert2';
 
+function validateUnitForm(form) {
+  const errors = {};
+
+  const name = (form.name || "").trim();
+  if (!name) {
+    errors.name = "Unit name is required.";
+  } else if (name.length < 2) {
+    errors.name = "Unit name must be at least 2 characters.";
+  }
+
+  const abbreviation = (form.abbreviation || "").trim();
+  if (!abbreviation) {
+    errors.abbreviation = "Abbreviation is required.";
+  } else if (abbreviation.length > 10) {
+    errors.abbreviation = "Abbreviation must be 10 characters or fewer.";
+  }
+
+  return errors;
+}
+
+function FieldError({ message }) {
+  if (!message) return null;
+  return <p className="mt-1 text-xs text-rose-400">{message}</p>;
+}
+
 function UnitForm({ initialData, onSubmit, onClose, submitting }) {
   const [form, setForm] = useState(initialData || { name: "", abbreviation: "" });
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
+
+  const handleChange = (field) => (e) => {
+    const value = e.target.value;
+    setForm((prev) => ({ ...prev, [field]: value }));
+    if (touched[field] || errors[field]) {
+      const nextErrors = validateUnitForm({ ...form, [field]: value });
+      setErrors((prev) => ({ ...prev, [field]: nextErrors[field] }));
+    }
+  };
+
+  const handleBlur = (field) => () => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    const nextErrors = validateUnitForm(form);
+    setErrors((prev) => ({ ...prev, [field]: nextErrors[field] }));
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    const nextErrors = validateUnitForm(form);
+    setErrors(nextErrors);
+    setTouched({ name: true, abbreviation: true });
+
+    if (Object.keys(nextErrors).length > 0) {
+      return;
+    }
+
     onSubmit(form);
   };
 
+  const fieldClass = (field) =>
+    `${inputClass} ${errors[field] ? "border-rose-500/60 focus:ring-rose-500/40" : ""}`;
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} noValidate className="space-y-4">
       <FormField label="Unit Name">
-        <input required type="text" placeholder="e.g. Box, Bottle, Piece" value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })} className={inputClass} />
+        <input
+          type="text"
+          placeholder="e.g. Box, Bottle, Piece"
+          value={form.name}
+          onChange={handleChange("name")}
+          onBlur={handleBlur("name")}
+          className={fieldClass("name")}
+          aria-invalid={!!errors.name}
+        />
+        <FieldError message={errors.name} />
       </FormField>
       <FormField label="Abbreviation">
-        <input type="text" placeholder="e.g. box, btl, pc" value={form.abbreviation}
-          onChange={(e) => setForm({ ...form, abbreviation: e.target.value })} className={inputClass} />
+        <input
+          type="text"
+          placeholder="e.g. box, btl, pc"
+          value={form.abbreviation}
+          onChange={handleChange("abbreviation")}
+          onBlur={handleBlur("abbreviation")}
+          className={fieldClass("abbreviation")}
+          aria-invalid={!!errors.abbreviation}
+        />
+        <FieldError message={errors.abbreviation} />
       </FormField>
       <div className="flex justify-end gap-3 pt-2">
         <button type="button" onClick={onClose} className="px-4 py-2 border border-[#1E2A45] text-[#8B96AE] hover:text-[#E7ECF6] hover:bg-white/[0.02] text-sm font-medium rounded-lg transition-colors">
@@ -70,7 +138,8 @@ function Units() {
       setIsAddOpen(false);
       await loadUnits(query || undefined);
     } catch (err) {
-      alert(err.message);
+      console.error("Create unit failed:", err);
+      alert(err.response?.data?.message || err.message || "Failed to create unit.");
     } finally {
       setSubmitting(false);
     }
@@ -83,7 +152,8 @@ function Units() {
       setEditingUnit(null);
       await loadUnits(query || undefined);
     } catch (err) {
-      alert(err.message);
+      console.error("Update unit failed:", err);
+      alert(err.response?.data?.message || err.message || "Failed to update unit.");
     } finally {
       setSubmitting(false);
     }
@@ -127,13 +197,6 @@ function Units() {
     } catch (err) {
       Swal.fire("Error!", "An error occurred while deleting the unit.", "error");
     }
-    // if (!confirm("Are you sure you want to delete this unit?")) return;
-    // try {
-    //   await unitsApi.remove(id);
-    //   await loadUnits(query || undefined);
-    // } catch (err) {
-    //   alert(err.message);
-    // }
   };
 
   return (

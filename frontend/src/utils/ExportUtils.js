@@ -5,6 +5,8 @@
 // "Export PDF" / "Print" render a simple printable table and invoke the
 // browser's print dialog (which offers "Save as PDF").
 
+import ExcelJS from "exceljs";
+
 function toCsvValue(value) {
   const str = value === null || value === undefined ? "" : String(value);
   if (/[",\n]/.test(str)) {
@@ -92,4 +94,56 @@ export function printTable(title, headers, rows) {
     </html>
   `);
   win.document.close();
+}
+
+// Generates a real .xlsx file with a bold header row.
+export async function downloadXlsx(filename, headers, rows, sheetName = "Sheet1") {
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet(sheetName);
+
+  sheet.addRow(headers);
+
+  // Bold + style the header row
+  const headerRow = sheet.getRow(1);
+  headerRow.font = { bold: true };
+  headerRow.alignment = { vertical: "middle", horizontal: "left" };
+  headerRow.eachCell((cell) => {
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FFE5E7EB" }, // light gray header background
+    };
+    cell.border = {
+      bottom: { style: "thin", color: { argb: "FFCCCCCC" } },
+    };
+  });
+
+  rows.forEach((row) => sheet.addRow(row));
+
+  // Auto-width columns based on content
+  sheet.columns.forEach((col, i) => {
+    const header = String(headers[i] ?? "");
+    const maxDataLen = rows.reduce((max, r) => {
+      const len = String(r[i] ?? "").length;
+      return len > max ? len : max;
+    }, 0);
+    col.width = Math.max(header.length, maxDataLen, 8) + 4;
+  });
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+export function downloadXlsxTemplate(filename, headers) {
+  return downloadXlsx(filename, headers, []);
 }

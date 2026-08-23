@@ -1,8 +1,3 @@
-// Products.jsx — "Product List" (Products > Product List)
-// Fields follow the PRODUCTS entity in the ERD: product_code, product_name,
-// generic_name, category_id, unit_id, minimum_stock, status.
-// Available stock (available_quantity) is aggregated from PRODUCT_BATCHES
-// and returned by the API alongside each product for display purposes.
 import { useEffect, useState } from "react";
 import { Trash2, Edit2, Download } from "lucide-react";
 import { productsApi, categoriesApi, unitsApi } from "../../api/endpoints";
@@ -10,7 +5,7 @@ import {
   PageHeader, Badge, Table, Toolbar, Modal, FormField, inputClass,
   ImportButton, ActionButton,
 } from "../../components/ui/Common";
-import { downloadCsv, downloadTemplate, parseCsvFile } from "../../utils/ExportUtils";
+import { downloadCsv, downloadXlsx, downloadXlsxTemplate, parseCsvFile } from "../../utils/ExportUtils";
 import Swal from 'sweetalert2';
 
 function stockTone(stock, minimum) {
@@ -89,7 +84,7 @@ function ProductForm({ initialData, onSubmit, onClose, categories, units, submit
           onChange={(e) => setFormData({ ...formData, generic_name: e.target.value })} className={inputClass} />
       </FormField>
 
-      <FormField label="Product Image">
+      {/* <FormField label="Product Image">
         <input
           type="file"
           accept="image/*"
@@ -115,7 +110,7 @@ function ProductForm({ initialData, onSubmit, onClose, categories, units, submit
             </button>
           </div>
         )}
-      </FormField>
+      </FormField> */}
 
       <div className="grid grid-cols-2 gap-4">
         <FormField label="Category">
@@ -151,7 +146,7 @@ function ProductForm({ initialData, onSubmit, onClose, categories, units, submit
   );
 }
 
-const CSV_HEADERS = ["product_code", "product_name", "generic_name", "category", "unit", "minimum_stock", "status"];
+const CSV_HEADERS = ["Product Code", "Product Name", "Generic Name", "Category Name", "Unit", "Minimum Stock", "Status"];
 
 function Products() {
   const [productsList, setProductsList] = useState([]);
@@ -261,18 +256,11 @@ function Products() {
     } catch (err) {
       Swal.fire("Error!", "An error occurred while deleting the product.", "error");
     }
-    // if (!confirm("Are you sure you want to delete this product record?")) return;
-    // try {
-    //   await productsApi.remove(id);
-    //   await loadProducts(query || undefined);
-    // } catch (err) {
-    //   alert(err.message);
-    // }
   };
 
   const handleExportProducts = () => {
-    downloadCsv(
-      "products.csv",
+    downloadXlsx(
+      "products.xlsx",
       CSV_HEADERS,
       productsList.map((p) => [p.product_code, p.product_name, p.generic_name, p.category, p.unit, p.minimum_stock, p.status])
     );
@@ -320,7 +308,7 @@ function Products() {
           <>
             <ImportButton label="Import Products" onImport={handleImportProducts} />
             <ActionButton icon={Download} label="Export Products" onClick={handleExportProducts} />
-            <ActionButton icon={Download} label="Download Template" onClick={() => downloadTemplate("product-template.csv", CSV_HEADERS)} />
+            <ActionButton icon={Download} label="Download Template" onClick={() => downloadXlsxTemplate("product-template.xlsx", CSV_HEADERS)} />
           </>
         }
       />
@@ -337,8 +325,8 @@ function Products() {
             { key: "category", label: "Category", render: (r) => <Badge>{r.category}</Badge> },
             { key: "unit", label: "Unit" },
             { key: "available_quantity", label: "Stock", render: (r) => <Badge tone={stockTone(r.available_quantity, r.minimum_stock)}>{r.available_quantity} {r.unit}</Badge> },
-            { key: "minimum_stock", label: "Min Stock" },
-            { key: "status", label: "Status", render: (r) => <Badge tone={r.status === "active" ? "good" : "neutral"}>{r.status}</Badge> },
+            { key: "minimum_stock", label: "Minimum Stock" },
+            { key: "status", label: "Status", render: (r) => <Badge tone={r.status === "active" ? "good" : "bad"}>{r.status}</Badge> },
             {
               key: "actions",
               label: "Actions",

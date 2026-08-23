@@ -12,21 +12,93 @@ import Swal from "sweetalert2";
 
 const CSV_HEADERS = ["name", "description", "status"];
 
+function validateCategoryForm(form) {
+  const errors = {};
+
+  const name = (form.name || "").trim();
+  if (!name) {
+    errors.name = "Category name is required.";
+  } else if (name.length < 2) {
+    errors.name = "Category name must be at least 2 characers.";
+  }
+
+  const description = (form.description || "").trim();
+  if (!description) {
+    errors.description = "Description is required.";
+  } else if (description.length > 5) {
+    errors.description = "Description must be 5 characters or fewer.";
+  }
+
+  return errors;
+}
+
+function FieldError({ message }) {
+  if (!message) return null;
+  return <p className="mt-1 text-xs text-rose-400">{message}</p>;
+}
+
 function CategoryForm({ initialData, onSubmit, onClose, submitting }) {
   const [form, setForm] = useState(initialData || { name: "", description: "", status: "active" });
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
+
+  const handleChange = (field) => (e) => {
+    const value = e.target.value;
+    setForm((prev) => ({ ...prev, [field]: value }));
+    if (touched[field] || errors[field]) {
+      const nextErrors = validateCategoryForm({ ...form, [field]: value });
+      setErrors((prev) => ({ ...prev, [field]: nextErrors[field] }));
+    }
+  };
+
+  const handleBlur = (field) => () => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    const nextErrors = validateCategoryForm(form);
+    setErrors((prev) => ({ ...prev, [field]: nextErrors[field] }));
+  };
+
+
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    const nextErrors = validateCategoryForm(form);
+    setErrors(nextErrors);
+    setTouched({ name: true, description: true });
+
+    if (Object.keys(nextErrors).length > 0) {
+      return;
+    }
     onSubmit(form);
   };
 
+  const fieldClass = (field) =>
+      `${inputClass} ${errors[field] ? "border-rose-500/60 focus:ring-rose-500/40" : ""}`;
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} noValidate className="space-y-4">
       <FormField label="Category Name">
-        <input required type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={inputClass} />
+        {/* <input required type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={inputClass} /> */}
+        <input
+          type="text"
+          value={form.name}
+          onChange={handleChange("name")}
+          onBlur={handleBlur("name")}
+          className={fieldClass("name")}
+          aria-invalid={!!errors.name}
+        />
+        <FieldError message={errors.name} />
       </FormField>
       <FormField label="Description">
-        <input type="text" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className={inputClass} />
+        {/* <input type="text" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className={inputClass} /> */}
+         <input
+          type="text"
+          value={form.description}
+          onChange={handleChange("description")}
+          onBlur={handleBlur("description")}
+          className={fieldClass("description")}
+          aria-invalid={!!errors.description}
+        />
+        <FieldError message={errors.description} />
       </FormField>
       <FormField label="Status">
         <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className={inputClass}>
@@ -102,42 +174,42 @@ function Categories() {
 
   const handleDelete = async (id) => {
     const result = await Swal.fire({
-        title: "Are you sure?",
-        text: "You want to delete this record!",
-        background: "#0B1220",
-        color: "#ffffff",
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonColor: "#3085d6",
-        cancelButtonColor: "#d33",
-        confirmButtonText: "Yes, delete it!",
-        showClass: {
-          popup: `
+      title: "Are you sure?",
+      text: "You want to delete this record!",
+      background: "#0B1220",
+      color: "#ffffff",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Yes, delete it!",
+      showClass: {
+        popup: `
           animate__animated
           animate__fadeInUp
           animate__faster
         `,
-        },
-        hideClass: {
-          popup: `
+      },
+      hideClass: {
+        popup: `
           animate__animated
           animate__fadeOutDown
           animate__faster
         `,
-        },
-      });
-  
-      // Cancel or dismiss (clicking outside, Esc) both land here and just stop
-      if (!result.isConfirmed) return;
-  
-      try {
-        await categoriesApi.remove(id);
-        await loadCategories(query || undefined);
-  
-        Swal.fire("Deleted!", "Category has been deleted.", "success");
-      } catch (err) {
-        Swal.fire("Error!", "An error occurred while deleting the category.", "error");
-      }
+      },
+    });
+
+    // Cancel or dismiss (clicking outside, Esc) both land here and just stop
+    if (!result.isConfirmed) return;
+
+    try {
+      await categoriesApi.remove(id);
+      await loadCategories(query || undefined);
+
+      Swal.fire("Deleted!", "Category has been deleted.", "success");
+    } catch (err) {
+      Swal.fire("Error!", "An error occurred while deleting the category.", "error");
+    }
   };
 
   const handleExport = () => {
@@ -184,7 +256,7 @@ function Categories() {
           columns={[
             { key: "name", label: "Name" },
             { key: "description", label: "Description", render: (r) => r.description || "—" },
-            { key: "status", label: "Status", render: (r) => <Badge tone={r.status === "active" ? "good" : "neutral"}>{r.status}</Badge> },
+            { key: "status", label: "Status", render: (r) => <Badge tone={r.status === "active" ? "good" : "bad"}>{r.status}</Badge> },
             {
               key: "actions",
               label: "Actions",
