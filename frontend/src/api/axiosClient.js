@@ -1,4 +1,5 @@
 import axios from "axios";
+import { toast } from "../utils/toast";
 
 // Adjust this to wherever your Express API is running.
 // Vite:  VITE_API_URL=http://localhost:8081/api  (in a .env file, exposed via import.meta.env)
@@ -26,7 +27,15 @@ axiosClient.interceptors.request.use((config) => {
 // Unwrap the { success, message, data } envelope the backend always returns,
 // and turn failed requests into a plain Error with a readable message.
 axiosClient.interceptors.response.use(
-  (response) => response.data,
+  (response) => {
+    const method = response.config.method?.toLowerCase();
+    const isMutation = ["post", "put", "patch", "delete"].includes(method);
+    if (isMutation && !response.config.skipToast) {
+      const fallback = method === "post" ? "Created successfully." : method === "delete" ? "Deleted successfully." : "Updated successfully.";
+      toast.success(response.data?.message || fallback);
+    }
+    return response.data;
+  },
   (error) => {
     if (error.response?.status === 401) {
       // Token missing/expired/invalid -> force a fresh login
@@ -38,6 +47,9 @@ axiosClient.interceptors.response.use(
     }
     const message =
       error.response?.data?.message || error.message || "Something went wrong. Please try again.";
+    const method = error.config?.method?.toLowerCase();
+    const isMutation = ["post", "put", "patch", "delete"].includes(method);
+    if (isMutation && !error.config?.skipToast) toast.error(message);
     return Promise.reject(new Error(message));
   }
 );

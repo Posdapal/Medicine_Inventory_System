@@ -3,8 +3,8 @@
 // manufacture_date, expiry_date, available_quantity.
 import { useEffect, useState } from "react";
 import { expiryApi } from "../../api/endpoints";
-import { PageHeader, Badge, Table, Toolbar, ExportGroup } from "../../components/ui/Common";
-import { downloadCsv, printTable } from "../../utils/ExportUtils";
+import { PageHeader, Badge, Table, Toolbar, ExportGroup, Pagination } from "../../components/ui/Common";
+import { downloadExcel, printTable } from "../../utils/ExportUtils";
 
 const HEADERS = ["Product", "Batch No.", "Manufacture Date", "Expiry Date", "Days Remaining", "Available Qty"];
 
@@ -13,13 +13,14 @@ function NearExpiry() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, total_pages: 1 });
 
-  const loadRows = async (search) => {
+  const loadRows = async (search, page = pagination.page, limit = pagination.limit) => {
     setLoading(true);
     setError("");
     try {
-      const { data } = await expiryApi.nearExpiry({ search });
-      setRows(data);
+      const { data } = await expiryApi.nearExpiry({ search, page, limit });
+      setRows(data.items); setPagination(data.pagination);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -28,15 +29,16 @@ function NearExpiry() {
   };
 
   useEffect(() => {
-    const timeout = setTimeout(() => loadRows(query || undefined), 300);
+    const timeout = setTimeout(() => loadRows(query || undefined, pagination.page, pagination.limit), 300);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query]);
+  }, [query, pagination.page, pagination.limit]);
+  useEffect(() => { setPagination((current) => ({ ...current, page: 1 })); }, [query]);
 
   const tableRows = () =>
     rows.map((r) => [r.product, r.batch_number, r.manufacture_date || "—", r.expiry_date, r.days_remaining, r.available_quantity]);
 
-  const handleExportExcel = () => downloadCsv("near-expiry.csv", HEADERS, tableRows());
+  const handleExportExcel = () => downloadExcel("near-expiry.xlsx", "Near Expiry", HEADERS, tableRows(), (pagination.page - 1) * pagination.limit);
   const handleExportPdf = () => printTable("Near Expiry Report", HEADERS, tableRows());
   const handlePrint = () => printTable("Near Expiry Report", HEADERS, tableRows());
 
@@ -55,7 +57,7 @@ function NearExpiry() {
       {loading ? (
         <p className="text-sm text-[#8B96AE]">Loading near-expiry batches...</p>
       ) : (
-        <Table
+        <><Table
           columns={[
             { key: "product", label: "Product" },
             { key: "batch_number", label: "Batch No." },
@@ -65,7 +67,9 @@ function NearExpiry() {
             { key: "available_quantity", label: "Available Qty" },
           ]}
           rows={rows}
+          rowOffset={(pagination.page - 1) * pagination.limit}
         />
+        <Pagination page={pagination.page} totalPages={pagination.total_pages} total={pagination.total} limit={pagination.limit} onPageChange={(page) => setPagination((current) => ({ ...current, page }))} onLimitChange={(limit) => setPagination((current) => ({ ...current, page: 1, limit }))} /></>
       )}
     </div>
   );

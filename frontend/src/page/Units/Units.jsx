@@ -1,8 +1,9 @@
+/* eslint-disable no-empty -- mutation errors are displayed by the global API interceptor */
 // Units.jsx — Products > Units
 import React, { useEffect, useState } from "react";
 import { Trash2, Edit2, Plus, ChevronRight } from "lucide-react";
 import { unitsApi } from "../../api/endpoints";
-import { Table, Toolbar, Modal, FormField, inputClass } from "../../components/ui/Common";
+import { Table, Toolbar, Modal, FormInput, Pagination } from "../../components/ui/Common";
 import Swal from 'sweetalert2';
 
 function UnitForm({ initialData, onSubmit, onClose, submitting }) {
@@ -10,19 +11,13 @@ function UnitForm({ initialData, onSubmit, onClose, submitting }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(form);
+    onSubmit({ ...form, name: form.name.trim(), abbreviation: form.abbreviation.trim() });
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <FormField label="Unit Name">
-        <input required type="text" placeholder="e.g. Box, Bottle, Piece" value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })} className={inputClass} />
-      </FormField>
-      <FormField label="Abbreviation">
-        <input type="text" placeholder="e.g. box, btl, pc" value={form.abbreviation}
-          onChange={(e) => setForm({ ...form, abbreviation: e.target.value })} className={inputClass} />
-      </FormField>
+      <FormInput label="Unit Name" required type="text" minLength={2} maxLength={50} placeholder="e.g. Box, Bottle, Piece" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+      <FormInput label="Abbreviation" type="text" maxLength={10} pattern="[A-Za-z0-9.-]*" title="Use letters, numbers, periods, or hyphens only." placeholder="e.g. box, btl, pc" value={form.abbreviation} onChange={(e) => setForm({ ...form, abbreviation: e.target.value })} />
       <div className="flex justify-end gap-3 pt-2">
         <button type="button" onClick={onClose} className="px-4 py-2 border border-[#1E2A45] text-[#8B96AE] hover:text-[#E7ECF6] hover:bg-white/[0.02] text-sm font-medium rounded-lg transition-colors">
           Cancel
@@ -43,13 +38,15 @@ function Units() {
   const [submitting, setSubmitting] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingUnit, setEditingUnit] = useState(null);
+  const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, total_pages: 1 });
 
-  const loadUnits = async (search) => {
+  const loadUnits = async (search, page = pagination.page, limit = pagination.limit) => {
     setLoading(true);
     setError("");
     try {
-      const { data } = await unitsApi.getAll(search);
-      setRows(data);
+      const { data } = await unitsApi.getAll({ search, page, limit });
+      setRows(data.items);
+      setPagination(data.pagination);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -58,10 +55,12 @@ function Units() {
   };
 
   useEffect(() => {
-    const timeout = setTimeout(() => loadUnits(query || undefined), 300);
+    const timeout = setTimeout(() => loadUnits(query || undefined, pagination.page, pagination.limit), 300);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query]);
+  }, [query, pagination.page, pagination.limit]);
+
+  useEffect(() => { setPagination((current) => ({ ...current, page: 1 })); }, [query]);
 
   const handleAdd = async (form) => {
     setSubmitting(true);
@@ -69,8 +68,7 @@ function Units() {
       await unitsApi.create(form);
       setIsAddOpen(false);
       await loadUnits(query || undefined);
-    } catch (err) {
-      alert(err.message);
+    } catch {
     } finally {
       setSubmitting(false);
     }
@@ -82,8 +80,7 @@ function Units() {
       await unitsApi.update(editingUnit.id, form);
       setEditingUnit(null);
       await loadUnits(query || undefined);
-    } catch (err) {
-      alert(err.message);
+    } catch {
     } finally {
       setSubmitting(false);
     }
@@ -123,9 +120,7 @@ function Units() {
       await unitsApi.remove(id);
       await loadUnits(query || undefined);
 
-      Swal.fire("Deleted!", "Unit has been deleted.", "success");
-    } catch (err) {
-      Swal.fire("Error!", "An error occurred while deleting the unit.", "error");
+    } catch {
     }
     // if (!confirm("Are you sure you want to delete this unit?")) return;
     // try {
@@ -169,6 +164,7 @@ function Units() {
             {loading ? (
               <p className="px-4 py-10 text-center text-sm text-[#8B96AE]">Loading units...</p>
             ) : (
+              <>
               <Table
                 columns={[
                   { key: "name", label: "Name" },
@@ -189,7 +185,10 @@ function Units() {
                   },
                 ]}
                 rows={rows}
+                rowOffset={(pagination.page - 1) * pagination.limit}
               />
+              <Pagination page={pagination.page} totalPages={pagination.total_pages} total={pagination.total} limit={pagination.limit} onPageChange={(page) => setPagination((current) => ({ ...current, page }))} onLimitChange={(limit) => setPagination((current) => ({ ...current, page: 1, limit }))} />
+              </>
             )}
           </div>
         </div>

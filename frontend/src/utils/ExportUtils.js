@@ -1,9 +1,11 @@
 // utils/exportUtils.js
 // Lightweight, dependency-free import/export helpers shared by every
 // inventory page (Products, Categories, Suppliers, Stock, Expiry).
-// "Export Excel" produces a CSV (opens natively in Excel/Sheets).
+// "Export Excel" produces a real XLSX workbook.
 // "Export PDF" / "Print" render a simple printable table and invoke the
 // browser's print dialog (which offers "Save as PDF").
+
+import * as XLSX from "xlsx";
 
 function toCsvValue(value) {
   const str = value === null || value === undefined ? "" : String(value);
@@ -27,6 +29,23 @@ export function downloadCsv(filename, headers, rows) {
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+}
+
+// Creates a genuine XLSX workbook with one header row and one row per table record.
+export function downloadExcel(filename, sheetName, headers, rows, rowOffset = 0) {
+  const workbookHeaders = ["No.", ...headers];
+  const normalizedRows = rows.map((row, rowIndex) => [rowOffset + rowIndex + 1, ...headers.map((_, index) => row[index] ?? "")]);
+  const worksheet = XLSX.utils.aoa_to_sheet([workbookHeaders, ...normalizedRows]);
+  worksheet["!cols"] = workbookHeaders.map((header, index) => ({
+    wch: Math.min(40, Math.max(12, String(header).length + 2, ...normalizedRows.map((row) => String(row[index] ?? "").length + 2))),
+  }));
+  if (workbookHeaders.length) worksheet["!autofilter"] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: normalizedRows.length, c: workbookHeaders.length - 1 } }) };
+
+  const workbook = XLSX.utils.book_new();
+  const safeSheetName = String(sheetName || "Report").replace(/[\\/?*:]/g, " ").replaceAll("[", " ").replaceAll("]", " ").slice(0, 31) || "Report";
+  XLSX.utils.book_append_sheet(workbook, worksheet, safeSheetName);
+  const xlsxFilename = String(filename || "export.xlsx").replace(/\.(xls|csv)$/i, ".xlsx");
+  XLSX.writeFile(workbook, xlsxFilename.endsWith(".xlsx") ? xlsxFilename : `${xlsxFilename}.xlsx`, { compression: true });
 }
 
 export function downloadTemplate(filename, headers) {

@@ -1,7 +1,9 @@
+/* eslint-disable no-empty -- mutation errors are displayed by the global API interceptor */
 import { useEffect, useState } from "react";
 import { Search, Plus, Trash2, X, Edit2, ShieldCheck } from "lucide-react";
 import { usersApi, permissionsApi } from "../../api/endpoints";
 import Swal from "sweetalert2";
+import { FormInput, FormSelect, Pagination, Table } from "../../components/ui/Common";
 
 // Modules that carry per-user CRUD permissions. Keep in sync with the
 // backend's VALID_MODULES (src/middleware/auth.middleware.js).
@@ -76,40 +78,6 @@ function Badge({ children, tone = "neutral" }) {
   );
 }
 
-function Table({ columns, rows }) {
-  return (
-    <div className="overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-[#1E2A45] text-left text-[#8B96AE] text-xs uppercase tracking-wide">
-              {columns.map((c) => (
-                <th key={c.key} className="px-4 py-3 font-medium">{c.label}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, i) => (
-              <tr key={row.id ?? i} className="border-b border-[#1E2A45] last:border-0 hover:bg-white/[0.02] transition-colors">
-                {columns.map((c) => (
-                  <td key={c.key} className="px-4 py-3 text-[#D7DEEB]">{c.render ? c.render(row) : row[c.key]}</td>
-                ))}
-              </tr>
-            ))}
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={columns.length} className="px-4 py-10 text-center text-[#5D6B85] text-sm">
-                  No records match your search.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
 function Modal({ isOpen, onClose, title, children, wide }) {
   if (!isOpen) return null;
   return (
@@ -144,85 +112,46 @@ function mapUserFromApi(u) {
 function UserForm({ initialData, onSubmit, onClose, submitting }) {
   const isEdit = !!initialData;
   const [formData, setFormData] = useState(
-    initialData || { name: "", username: "", email: "", password: "", role: ROLE_STAFF, status: "active" }
+    initialData || { name: "", username: "", email: "", password: "", role: "", status: "" }
   );
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(formData);
+    onSubmit({
+      ...formData,
+      name: formData.name.trim(),
+      username: formData.username.trim(),
+      email: formData.email.trim().toLowerCase(),
+    });
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="block text-xs font-medium text-[#8B96AE] uppercase mb-1.5">Full Name</label>
-        <input
-          required
-          type="text"
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          className="w-full bg-[#070B12] border border-[#1E2A45] rounded-lg px-3 py-2 text-sm text-[#E7ECF6] focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-        />
-      </div>
+      <FormInput label="Full Name" required type="text" minLength={2} maxLength={100} autoComplete="name" placeholder="e.g. Jane Smith" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
 
-      <div>
-        <label className="block text-xs font-medium text-[#8B96AE] uppercase mb-1.5">Username</label>
-        <input
-          required
-          type="text"
-          value={formData.username}
-          onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-          className="w-full bg-[#070B12] border border-[#1E2A45] rounded-lg px-3 py-2 text-sm text-[#E7ECF6] focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-        />
-      </div>
+      <FormInput label="Username" required type="text" minLength={3} maxLength={50} pattern="[A-Za-z0-9._-]+" title="Use letters, numbers, periods, hyphens, or underscores only." autoComplete="username" placeholder="e.g. jane.smith" value={formData.username} onChange={(e) => setFormData({ ...formData, username: e.target.value })} />
 
-      <div>
-        <label className="block text-xs font-medium text-[#8B96AE] uppercase mb-1.5">Email Address</label>
-        <input
-          required
-          type="email"
-          value={formData.email}
-          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-          className="w-full bg-[#070B12] border border-[#1E2A45] rounded-lg px-3 py-2 text-sm text-[#E7ECF6] focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-        />
-      </div>
+      <FormInput label="Email Address" required type="email" maxLength={120} autoComplete="email" placeholder="e.g. jane@pharmacy.com" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
 
       {!isEdit && (
-        <div>
-          <label className="block text-xs font-medium text-[#8B96AE] uppercase mb-1.5">Temporary Password</label>
-          <input
-            required
-            type="password"
-            value={formData.password}
-            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-            className="w-full bg-[#070B12] border border-[#1E2A45] rounded-lg px-3 py-2 text-sm text-[#E7ECF6] focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-          />
-        </div>
+        <FormInput label="Temporary Password" required type="password" minLength={8} maxLength={128} autoComplete="new-password" placeholder="At least 8 characters" hint="Use 8 or more characters." value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
       )}
 
       <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-xs font-medium text-[#8B96AE] uppercase mb-1.5">System Role</label>
-          <select
+        <FormSelect label="System Role" required placeholder="Select a role"
             value={formData.role}
             onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-            className="w-full bg-[#070B12] border border-[#1E2A45] rounded-lg px-3 py-2 text-sm text-[#E7ECF6] focus:outline-none focus:ring-2 focus:ring-blue-500/40"
           >
             <option value={ROLE_STAFF}>Staff</option>
             <option value={ROLE_ADMIN}>Administrator</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-[#8B96AE] uppercase mb-1.5">Status</label>
-          <select
+        </FormSelect>
+        <FormSelect label="Status" required placeholder="Select a status"
             value={formData.status}
             onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-            className="w-full bg-[#070B12] border border-[#1E2A45] rounded-lg px-3 py-2 text-sm text-[#E7ECF6] focus:outline-none focus:ring-2 focus:ring-blue-500/40"
           >
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
-          </select>
-        </div>
+        </FormSelect>
       </div>
 
       <div className="flex justify-end gap-3 pt-2">
@@ -380,7 +309,7 @@ function PermissionsForm({ targetUser, onClose, submitting, onSave }) {
   );
 }
 
-function Users() {
+function Users({ navigationFilters = {} }) {
   const [usersList, setUsersList] = useState([]);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -390,13 +319,15 @@ function Users() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);      // basic profile edit
   const [permissionsUser, setPermissionsUser] = useState(null); // permissions modal target
+  const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, total_pages: 1 });
 
-  const loadUsers = async (search) => {
+  const loadUsers = async (search, page = pagination.page, limit = pagination.limit) => {
     setLoading(true);
     setError("");
     try {
-      const { data } = await usersApi.getAll(search);
-      setUsersList(data.map(mapUserFromApi));
+      const { data } = await usersApi.getAll({ search, page, limit, status: navigationFilters.status });
+      setUsersList(data.items.map(mapUserFromApi));
+      setPagination(data.pagination);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -405,10 +336,12 @@ function Users() {
   };
 
   useEffect(() => {
-    const timeout = setTimeout(() => loadUsers(query || undefined), 300);
+    const timeout = setTimeout(() => loadUsers(query || undefined, pagination.page, pagination.limit), 300);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query]);
+  }, [query, pagination.page, pagination.limit, navigationFilters.status]);
+
+  useEffect(() => { setPagination((current) => ({ ...current, page: 1 })); }, [query]);
 
   const handleAddUser = async (formData) => {
     setSubmitting(true);
@@ -422,8 +355,7 @@ function Users() {
       });
       setIsAddOpen(false);
       await loadUsers(query || undefined);
-    } catch (err) {
-      alert(err.message);
+    } catch {
     } finally {
       setSubmitting(false);
     }
@@ -441,8 +373,7 @@ function Users() {
       });
       setEditingUser(null);
       await loadUsers(query || undefined);
-    } catch (err) {
-      alert(err.message);
+    } catch {
     } finally {
       setSubmitting(false);
     }
@@ -453,23 +384,7 @@ function Users() {
     try {
       await permissionsApi.updateForUser(permissionsUser.id, permissions);
       setPermissionsUser(null);
-      Swal.fire({
-        title: "Saved",
-        text: "Permissions updated.",
-        icon: "success",
-        background: "#0B1220",
-        color: "#ffffff",
-        timer: 1400,
-        showConfirmButton: false,
-      });
-    } catch (err) {
-      Swal.fire({
-        title: "Error",
-        text: err.message,
-        icon: "error",
-        background: "#0B1220",
-        color: "#ffffff",
-      });
+    } catch {
     } finally {
       setSubmitting(false);
     }
@@ -496,9 +411,7 @@ function Users() {
     try {
       await usersApi.remove(id);
       await loadUsers(query || undefined);
-      Swal.fire("Deleted!", "User has been deleted.", "success");
-    } catch (err) {
-      Swal.fire("Error!", "An error occurred while deleting the user.", "error");
+    } catch {
     }
   };
 
@@ -518,6 +431,7 @@ function Users() {
       {loading ? (
         <p className="text-sm text-[#8B96AE]">Loading users...</p>
       ) : (
+        <>
         <Table
           columns={[
             { key: "name", label: "Name" },
@@ -544,7 +458,10 @@ function Users() {
             },
           ]}
           rows={usersList}
+          rowOffset={(pagination.page - 1) * pagination.limit}
         />
+        <Pagination page={pagination.page} totalPages={pagination.total_pages} total={pagination.total} limit={pagination.limit} onPageChange={(page) => setPagination((current) => ({ ...current, page }))} onLimitChange={(limit) => setPagination((current) => ({ ...current, page: 1, limit }))} />
+        </>
       )}
 
       <Modal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} title="Create New System User">

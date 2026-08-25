@@ -1,3 +1,4 @@
+/* eslint-disable no-empty -- mutation errors are displayed by the global API interceptor */
 // Products.jsx — "Product List" (Products > Product List)
 // Fields follow the PRODUCTS entity in the ERD: product_code, product_name,
 // generic_name, category_id, unit_id, minimum_stock, status.
@@ -7,14 +8,20 @@ import { useEffect, useState } from "react";
 import { Trash2, Edit2, Download } from "lucide-react";
 import { productsApi, categoriesApi, unitsApi } from "../../api/endpoints";
 import {
-  PageHeader, Badge, Table, Toolbar, Modal, FormField, inputClass,
-  ImportButton, ActionButton,
+  PageHeader, Badge, Table, Toolbar, Modal, FormField, FormInput, FormSelect, inputClass,
+  ImportButton, ActionButton, Pagination,
 } from "../../components/ui/Common";
-import { downloadCsv, downloadTemplate, parseCsvFile } from "../../utils/ExportUtils";
+import { downloadExcel, downloadTemplate, parseCsvFile } from "../../utils/ExportUtils";
 import Swal from 'sweetalert2';
+import { toast } from "../../utils/toast";
 
 function stockTone(stock, minimum) {
   return stock <= minimum ? "bad" : stock <= minimum * 1.5 ? "warn" : "good";
+}
+
+function formatStatus(status) {
+  if (!status) return "—";
+  return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
 }
 
 function mapProductFromApi(p) {
@@ -24,24 +31,26 @@ function mapProductFromApi(p) {
     product_name: p.product_name,
     generic_name: p.generic_name || "",
     image_url: p.image_url || "",
-    category: p.category_name,
-    unit: p.unit_name,
+    category_id: p.category_id ? String(p.category_id) : "",
+    unit_id: p.unit_id ? String(p.unit_id) : "",
+    category: p.category_name || "Uncategorized",
+    unit: p.unit_name || p.unit_abbreviation || "—",
     available_quantity: p.available_quantity ?? 0,
     minimum_stock: p.minimum_stock,
-    status: p.status || "active",
+    status: String(p.status || "active").toLowerCase(),
   };
 }
 
 function mapProductToApi(form, categories, units) {
-  const category = categories.find((c) => c.name === form.category);
-  const unit = units.find((u) => u.name === form.unit);
+  const categoryId = form.category_id || categories.find((category) => category.name === form.category)?.id;
+  const unitId = form.unit_id || units.find((unit) => unit.name === form.unit)?.id;
   return {
     product_code: form.product_code,
     product_name: form.product_name,
     generic_name: form.generic_name || null,
     image_url: form.image_url || null,
-    category_id: category ? category.id : null,
-    unit_id: unit ? unit.id : null,
+    category_id: categoryId ? Number(categoryId) : null,
+    unit_id: unitId ? Number(unitId) : null,
     minimum_stock: form.minimum_stock,
     status: form.status,
   };
@@ -54,40 +63,34 @@ function ProductForm({ initialData, onSubmit, onClose, categories, units, submit
       product_name: "",
       generic_name: "",
       image_url: "",
-      category: categories[0]?.name || "",
-      unit: units[0]?.name || "",
-      minimum_stock: 0,
-      status: "active",
+      category_id: "",
+      unit_id: "",
+      minimum_stock: "",
+      status: "",
     }
   );
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit({ ...formData, minimum_stock: Number(formData.minimum_stock) });
+    onSubmit({
+      ...formData,
+      product_code: formData.product_code.trim(),
+      product_name: formData.product_name.trim(),
+      generic_name: formData.generic_name.trim(),
+      minimum_stock: Number(formData.minimum_stock),
+    });
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
-        <FormField label="Product Code">
-          <input required type="text" placeholder="e.g. PRD-1000" value={formData.product_code}
-            onChange={(e) => setFormData({ ...formData, product_code: e.target.value })} className={inputClass} />
-        </FormField>
-        <FormField label="Minimum Stock">
-          <input required type="number" min="0" value={formData.minimum_stock}
-            onChange={(e) => setFormData({ ...formData, minimum_stock: e.target.value })} className={inputClass} />
-        </FormField>
+        <FormInput label="Product Code" required type="text" minLength={2} maxLength={30} pattern="[A-Za-z0-9_-]+" title="Use letters, numbers, hyphens, or underscores only." placeholder="e.g. PRD-1000" value={formData.product_code} onChange={(e) => setFormData({ ...formData, product_code: e.target.value })} />
+        <FormInput label="Minimum Stock" required type="number" min="0" step="1" inputMode="numeric" placeholder="e.g. 10" value={formData.minimum_stock} onChange={(e) => setFormData({ ...formData, minimum_stock: e.target.value })} />
       </div>
 
-      <FormField label="Product Name">
-        <input required type="text" value={formData.product_name}
-          onChange={(e) => setFormData({ ...formData, product_name: e.target.value })} className={inputClass} />
-      </FormField>
+      <FormInput label="Product Name" required type="text" minLength={2} maxLength={150} placeholder="e.g. Amoxicillin 500 mg" value={formData.product_name} onChange={(e) => setFormData({ ...formData, product_name: e.target.value })} />
 
-      <FormField label="Generic Name">
-        <input type="text" value={formData.generic_name}
-          onChange={(e) => setFormData({ ...formData, generic_name: e.target.value })} className={inputClass} />
-      </FormField>
+      <FormInput label="Generic Name" type="text" maxLength={150} placeholder="e.g. Amoxicillin" value={formData.generic_name} onChange={(e) => setFormData({ ...formData, generic_name: e.target.value })} />
 
       <FormField label="Product Image">
         <input
@@ -118,24 +121,18 @@ function ProductForm({ initialData, onSubmit, onClose, categories, units, submit
       </FormField>
 
       <div className="grid grid-cols-2 gap-4">
-        <FormField label="Category">
-          <select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className={inputClass}>
-            {categories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
-          </select>
-        </FormField>
-        <FormField label="Unit">
-          <select value={formData.unit} onChange={(e) => setFormData({ ...formData, unit: e.target.value })} className={inputClass}>
-            {units.map((u) => <option key={u.id} value={u.name}>{u.name}</option>)}
-          </select>
-        </FormField>
+        <FormSelect label="Category" required placeholder="Select a category" value={formData.category_id} onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}>
+            {categories.map((c) => <option key={c.id} value={String(c.id)}>{c.name}</option>)}
+        </FormSelect>
+        <FormSelect label="Unit" required placeholder="Select a unit" value={formData.unit_id} onChange={(e) => setFormData({ ...formData, unit_id: e.target.value })}>
+            {units.map((u) => <option key={u.id} value={String(u.id)}>{u.name}</option>)}
+        </FormSelect>
       </div>
 
-      <FormField label="Status">
-        <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className={inputClass}>
+      <FormSelect label="Status" required placeholder="Select a status" value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })}>
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
-        </select>
-      </FormField>
+      </FormSelect>
 
       <div className="flex justify-end gap-3 pt-2">
         <button type="button" onClick={onClose}
@@ -153,7 +150,7 @@ function ProductForm({ initialData, onSubmit, onClose, categories, units, submit
 
 const CSV_HEADERS = ["product_code", "product_name", "generic_name", "category", "unit", "minimum_stock", "status"];
 
-function Products() {
+function Products({ navigationFilters = {} }) {
   const [productsList, setProductsList] = useState([]);
   const [categories, setCategories] = useState([]);
   const [units, setUnits] = useState([]);
@@ -161,6 +158,7 @@ function Products() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, total_pages: 1 });
 
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
@@ -178,12 +176,13 @@ function Products() {
     loadLookups();
   }, []);
 
-  const loadProducts = async (search) => {
+  const loadProducts = async (search, page = pagination.page, limit = pagination.limit) => {
     setLoading(true);
     setError("");
     try {
-      const { data } = await productsApi.getAll({ search });
-      setProductsList(data.map(mapProductFromApi));
+      const { data } = await productsApi.getAll({ search, page, limit, status: navigationFilters.status });
+      setProductsList(data.items.map(mapProductFromApi));
+      setPagination(data.pagination);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -192,9 +191,13 @@ function Products() {
   };
 
   useEffect(() => {
-    const timeout = setTimeout(() => loadProducts(query || undefined), 300);
+    const timeout = setTimeout(() => loadProducts(query || undefined, pagination.page, pagination.limit), 300);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, pagination.page, pagination.limit, navigationFilters.status]);
+
+  useEffect(() => {
+    setPagination((current) => ({ ...current, page: 1 }));
   }, [query]);
 
   const handleAddProduct = async (formData) => {
@@ -203,8 +206,7 @@ function Products() {
       await productsApi.create(mapProductToApi(formData, categories, units));
       setIsAddOpen(false);
       await loadProducts(query || undefined);
-    } catch (err) {
-      alert(err.message);
+    } catch {
     } finally {
       setSubmitting(false);
     }
@@ -216,8 +218,7 @@ function Products() {
       await productsApi.update(editingProduct.id, mapProductToApi(formData, categories, units));
       setEditingProduct(null);
       await loadProducts(query || undefined);
-    } catch (err) {
-      alert(err.message);
+    } catch {
     } finally {
       setSubmitting(false);
     }
@@ -257,9 +258,7 @@ function Products() {
       await productsApi.remove(id);
       await loadProducts(query || undefined);
 
-      Swal.fire("Deleted!", "Product has been deleted.", "success");
-    } catch (err) {
-      Swal.fire("Error!", "An error occurred while deleting the product.", "error");
+    } catch {
     }
     // if (!confirm("Are you sure you want to delete this product record?")) return;
     // try {
@@ -271,10 +270,12 @@ function Products() {
   };
 
   const handleExportProducts = () => {
-    downloadCsv(
-      "products.csv",
-      CSV_HEADERS,
-      productsList.map((p) => [p.product_code, p.product_name, p.generic_name, p.category, p.unit, p.minimum_stock, p.status])
+    downloadExcel(
+      "products.xlsx",
+      "Products",
+      ["Code", "Product Name", "Generic Name", "Category", "Unit", "Stock", "Min Stock", "Status"],
+      productsList.map((p) => [p.product_code, p.product_name, p.generic_name, p.category, p.unit, p.available_quantity, p.minimum_stock, formatStatus(p.status)]),
+      (pagination.page - 1) * pagination.limit
     );
   };
 
@@ -296,13 +297,14 @@ function Products() {
             },
             categories,
             units
-          )
+          ),
+          { skipToast: true }
         );
       }
       await loadProducts(query || undefined);
-      alert(`Imported ${records.length} product(s).`);
+      toast.success(`Imported ${records.length} product(s).`);
     } catch (err) {
-      alert(err.message || "Failed to import products.");
+      toast.error(err.message || "Failed to import products.");
     } finally {
       setSubmitting(false);
     }
@@ -310,7 +312,7 @@ function Products() {
 
   return (
     <div>
-      <PageHeader title="Product List" subtitle="Products / Product List" description="Manage products and their inventory details." onAdd={() => setIsAddOpen(true)} addLabel="Add Product" />
+      <PageHeader title="Product List" subtitle="Products / Product List" description={navigationFilters.status === "active" ? "Showing active products from the dashboard." : "Manage products and their inventory details."} onAdd={() => setIsAddOpen(true)} addLabel="Add Product" />
 
       <Toolbar
         query={query}
@@ -329,6 +331,7 @@ function Products() {
       {loading ? (
         <p className="text-sm text-[#8B96AE]">Loading products...</p>
       ) : (
+        <>
         <Table
           columns={[
             { key: "product_code", label: "Code" },
@@ -338,7 +341,7 @@ function Products() {
             { key: "unit", label: "Unit" },
             { key: "available_quantity", label: "Stock", render: (r) => <Badge tone={stockTone(r.available_quantity, r.minimum_stock)}>{r.available_quantity} {r.unit}</Badge> },
             { key: "minimum_stock", label: "Min Stock" },
-            { key: "status", label: "Status", render: (r) => <Badge tone={r.status === "active" ? "good" : "neutral"}>{r.status}</Badge> },
+            { key: "status", label: "Status", render: (r) => <Badge tone={r.status === "active" ? "good" : "neutral"}>{formatStatus(r.status)}</Badge> },
             {
               key: "actions",
               label: "Actions",
@@ -355,7 +358,17 @@ function Products() {
             },
           ]}
           rows={productsList}
+          rowOffset={(pagination.page - 1) * pagination.limit}
         />
+        <Pagination
+          page={pagination.page}
+          totalPages={pagination.total_pages}
+          total={pagination.total}
+          limit={pagination.limit}
+          onPageChange={(page) => setPagination((current) => ({ ...current, page }))}
+          onLimitChange={(limit) => setPagination((current) => ({ ...current, page: 1, limit }))}
+        />
+        </>
       )}
 
       <Modal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} title="Add New Product">

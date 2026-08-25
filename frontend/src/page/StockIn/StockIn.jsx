@@ -1,3 +1,4 @@
+/* eslint-disable no-empty -- mutation errors are displayed by the global API interceptor */
 // StockIn.jsx — Stock Management > Stock In
 // Creates a STOCK_TRANSACTION (transaction_type = "stock_in") that receives
 // a new PRODUCT_BATCH: batch_number, manufacture_date, expiry_date,
@@ -6,11 +7,12 @@ import { useEffect, useState } from "react";
 import { Trash2, Download } from "lucide-react";
 import { stockApi, productsApi, suppliersApi } from "../../api/endpoints";
 import {
-  PageHeader, Badge, Table, Toolbar, Modal, FormField, inputClass,
-  ImportButton, ActionButton,
+  PageHeader, Badge, Table, Toolbar, Modal, FormInput, FormSelect, FormDatePicker,
+  ImportButton, ActionButton, Pagination,
 } from "../../components/ui/Common";
-import { downloadCsv, parseCsvFile } from "../../utils/ExportUtils";
+import { downloadExcel, parseCsvFile } from "../../utils/ExportUtils";
 import Swal from 'sweetalert2';
+import { toast } from "../../utils/toast";
 
 const CSV_HEADERS = [
   "product", "supplier", "batch_number", "manufacture_date", "expiry_date",
@@ -19,64 +21,45 @@ const CSV_HEADERS = [
 
 function StockInForm({ onSubmit, onClose, products, suppliers, submitting }) {
   const [form, setForm] = useState({
-    product: products[0]?.product_name || "",
+    product: "",
     supplier: "",
     batch_number: "",
     manufacture_date: "",
     expiry_date: "",
-    received_quantity: 0,
-    purchase_price: 0,
+    received_quantity: "",
+    purchase_price: "",
     reference_number: "",
     transaction_date: new Date().toISOString().slice(0, 10),
   });
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit({ ...form, received_quantity: Number(form.received_quantity), purchase_price: Number(form.purchase_price) });
+    onSubmit({ ...form, batch_number: form.batch_number.trim(), reference_number: form.reference_number.trim(), received_quantity: Number(form.received_quantity), purchase_price: Number(form.purchase_price) });
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
-        <FormField label="Product">
-          <select value={form.product} onChange={(e) => setForm({ ...form, product: e.target.value })} className={inputClass}>
+        <FormSelect label="Product" required placeholder="Select a product" value={form.product} onChange={(e) => setForm({ ...form, product: e.target.value })}>
             {products.map((p) => <option key={p.id} value={p.product_name}>{p.product_name}</option>)}
-          </select>
-        </FormField>
-        <FormField label="Supplier">
-          <select value={form.supplier} onChange={(e) => setForm({ ...form, supplier: e.target.value })} className={inputClass}>
-            <option value="">No supplier</option>
+        </FormSelect>
+        <FormSelect label="Supplier" placeholder="Select a supplier (optional)" value={form.supplier} onChange={(e) => setForm({ ...form, supplier: e.target.value })}>
             {suppliers.map((s) => <option key={s.id} value={s.supplier_name}>{s.supplier_name}</option>)}
-          </select>
-        </FormField>
+        </FormSelect>
       </div>
       <div className="grid grid-cols-2 gap-4">
-        <FormField label="Batch Number">
-          <input required type="text" value={form.batch_number} onChange={(e) => setForm({ ...form, batch_number: e.target.value })} className={inputClass} />
-        </FormField>
-        <FormField label="Reference No.">
-          <input type="text" value={form.reference_number} onChange={(e) => setForm({ ...form, reference_number: e.target.value })} className={inputClass} />
-        </FormField>
+        <FormInput label="Batch Number" required type="text" minLength={2} maxLength={50} placeholder="e.g. BATCH-2026-001" value={form.batch_number} onChange={(e) => setForm({ ...form, batch_number: e.target.value })} />
+        <FormInput label="Reference No." type="text" maxLength={50} placeholder="e.g. PO-2026-001" value={form.reference_number} onChange={(e) => setForm({ ...form, reference_number: e.target.value })} />
       </div>
       <div className="grid grid-cols-2 gap-4">
-        <FormField label="Manufacture Date">
-          <input type="date" value={form.manufacture_date} onChange={(e) => setForm({ ...form, manufacture_date: e.target.value })} className={inputClass} />
-        </FormField>
-        <FormField label="Expiry Date">
-          <input type="date" value={form.expiry_date} onChange={(e) => setForm({ ...form, expiry_date: e.target.value })} className={inputClass} />
-        </FormField>
+        <FormDatePicker label="Manufacture Date" value={form.manufacture_date} onChange={(e) => setForm({ ...form, manufacture_date: e.target.value })} />
+        <FormDatePicker label="Expiry Date" min={form.manufacture_date || undefined} value={form.expiry_date} onChange={(e) => setForm({ ...form, expiry_date: e.target.value })} />
       </div>
       <div className="grid grid-cols-2 gap-4">
-        <FormField label="Received Quantity">
-          <input required type="number" min="1" value={form.received_quantity} onChange={(e) => setForm({ ...form, received_quantity: e.target.value })} className={inputClass} />
-        </FormField>
-        <FormField label="Purchase Price ($)">
-          <input required type="number" step="0.01" min="0" value={form.purchase_price} onChange={(e) => setForm({ ...form, purchase_price: e.target.value })} className={inputClass} />
-        </FormField>
+        <FormInput label="Received Quantity" required type="number" min="1" step="1" inputMode="numeric" placeholder="e.g. 100" value={form.received_quantity} onChange={(e) => setForm({ ...form, received_quantity: e.target.value })} />
+        <FormInput label="Purchase Price ($)" required type="number" step="0.01" min="0" inputMode="decimal" placeholder="e.g. 12.50" value={form.purchase_price} onChange={(e) => setForm({ ...form, purchase_price: e.target.value })} />
       </div>
-      <FormField label="Transaction Date">
-        <input required type="date" value={form.transaction_date} onChange={(e) => setForm({ ...form, transaction_date: e.target.value })} className={inputClass} />
-      </FormField>
+      <FormDatePicker label="Transaction Date" required value={form.transaction_date} onChange={(e) => setForm({ ...form, transaction_date: e.target.value })} />
       <div className="flex justify-end gap-3 pt-2">
         <button type="button" onClick={onClose} className="px-4 py-2 border border-[#1E2A45] text-[#8B96AE] hover:text-[#E7ECF6] hover:bg-white/[0.02] text-sm font-medium rounded-lg transition-colors">
           Cancel
@@ -89,7 +72,7 @@ function StockInForm({ onSubmit, onClose, products, suppliers, submitting }) {
   );
 }
 
-function StockIn() {
+function StockIn({ navigationFilters = {} }) {
   const [query, setQuery] = useState("");
   const [rows, setRows] = useState([]);
   const [products, setProducts] = useState([]);
@@ -98,6 +81,7 @@ function StockIn() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, total_pages: 1 });
 
   useEffect(() => {
     async function loadLookups() {
@@ -112,12 +96,13 @@ function StockIn() {
     loadLookups();
   }, []);
 
-  const loadRows = async (search) => {
+  const loadRows = async (search, page = pagination.page, limit = pagination.limit) => {
     setLoading(true);
     setError("");
     try {
-      const { data } = await stockApi.stockIn.getAll({ search });
-      setRows(data);
+      const { data } = await stockApi.stockIn.getAll({ search, page, limit, date: navigationFilters.date });
+      setRows(data.items);
+      setPagination(data.pagination);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -126,10 +111,12 @@ function StockIn() {
   };
 
   useEffect(() => {
-    const timeout = setTimeout(() => loadRows(query || undefined), 300);
+    const timeout = setTimeout(() => loadRows(query || undefined, pagination.page, pagination.limit), 300);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query]);
+  }, [query, pagination.page, pagination.limit, navigationFilters.date]);
+
+  useEffect(() => { setPagination((current) => ({ ...current, page: 1 })); }, [query]);
 
   const handleAdd = async (form) => {
     setSubmitting(true);
@@ -137,8 +124,7 @@ function StockIn() {
       await stockApi.stockIn.create(form);
       setIsAddOpen(false);
       await loadRows(query || undefined);
-    } catch (err) {
-      alert(err.message);
+    } catch {
     } finally {
       setSubmitting(false);
     }
@@ -178,9 +164,7 @@ function StockIn() {
       await stockApi.remove(id);
       await loadRows(query || undefined);
 
-      Swal.fire("Deleted!", "StockIn has been deleted.", "success");
-    } catch (err) {
-      Swal.fire("Error!", "An error occurred while deleting the stockin.", "error");
+    } catch {
     }
     // if (!confirm("Remove this stock-in record?")) return;
     // try {
@@ -192,10 +176,12 @@ function StockIn() {
   };
 
   const handleExport = () => {
-    downloadCsv(
-      "stock-in.csv",
-      CSV_HEADERS,
-      rows.map((r) => [r.product, r.supplier, r.batch_number, r.manufacture_date, r.expiry_date, r.received_quantity, r.purchase_price, r.reference_number, r.transaction_date])
+    downloadExcel(
+      "stock-in.xlsx",
+      "Stock In",
+      ["Product", "Supplier", "Batch No.", "Manufacture Date", "Expiry Date", "Qty Received", "Purchase Price", "Reference No.", "Date"],
+      rows.map((r) => [r.product, r.supplier, r.batch_number, r.manufacture_date, r.expiry_date, r.received_quantity, Number(r.purchase_price || 0), r.reference_number, r.transaction_date]),
+      (pagination.page - 1) * pagination.limit
     );
   };
 
@@ -214,12 +200,12 @@ function StockIn() {
           purchase_price: Number(r.purchase_price || 0),
           reference_number: r.reference_number,
           transaction_date: r.transaction_date,
-        });
+        }, { skipToast: true });
       }
       await loadRows(query || undefined);
-      alert(`Imported ${records.length} stock-in record(s).`);
+      toast.success(`Imported ${records.length} stock-in record(s).`);
     } catch (err) {
-      alert(err.message || "Failed to import stock-in records.");
+      toast.error(err.message || "Failed to import stock-in records.");
     } finally {
       setSubmitting(false);
     }
@@ -227,7 +213,7 @@ function StockIn() {
 
   return (
     <div>
-      <PageHeader title="Stock In" subtitle="Stock Management / Stock In" description="Record and review incoming inventory." onAdd={() => setIsAddOpen(true)} addLabel="Create Stock In" />
+      <PageHeader title="Stock In" subtitle="Stock Management / Stock In" description={navigationFilters.date === "today" ? "Showing completed stock-in records from today." : "Record and review incoming inventory."} onAdd={() => setIsAddOpen(true)} addLabel="Create Stock In" />
 
       <Toolbar
         query={query}
@@ -245,7 +231,7 @@ function StockIn() {
       {loading ? (
         <p className="text-sm text-[#8B96AE]">Loading stock-in records...</p>
       ) : (
-        <Table
+        <><Table
           columns={[
             { key: "product", label: "Product" },
             { key: "supplier", label: "Supplier", render: (r) => r.supplier || "—" },
@@ -266,7 +252,9 @@ function StockIn() {
             },
           ]}
           rows={rows}
+          rowOffset={(pagination.page - 1) * pagination.limit}
         />
+        <Pagination page={pagination.page} totalPages={pagination.total_pages} total={pagination.total} limit={pagination.limit} onPageChange={(page) => setPagination((current) => ({ ...current, page }))} onLimitChange={(limit) => setPagination((current) => ({ ...current, page: 1, limit }))} /></>
       )}
 
       <Modal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} title="Create Stock In">

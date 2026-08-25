@@ -41,12 +41,7 @@ const NAV = [
       { key: "units", label: "Units", Component: Units },
     ],
   },
-  {
-    key: "suppliers", label: "Suppliers", icon: Truck,
-    children: [
-      { key: "supplier-list", label: "Supplier List", Component: Suppliers },
-    ],
-  },
+  { key: "supplier-list", label: "Suppliers", icon: Truck, Component: Suppliers },
   {
     key: "stock-management", label: "Stock Management", icon: Boxes,
     children: [
@@ -88,6 +83,7 @@ function parentGroupOf(page) {
 function DashboardShell() {
   const { logout } = useAuth();
   const [page, setPage] = useState("dashboard");
+  const [navigationFilters, setNavigationFilters] = useState({});
   const [openGroups, setOpenGroups] = useState(() => new Set([parentGroupOf("dashboard")].filter(Boolean)));
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -109,8 +105,9 @@ function DashboardShell() {
     });
   };
 
-  const selectPage = (key, groupKey) => {
+  const selectPage = (key, groupKey, filters = {}) => {
     setPage(key);
+    setNavigationFilters(filters);
     if (groupKey) {
       setOpenGroups((prev) => new Set(prev).add(groupKey));
     }
@@ -217,7 +214,7 @@ function DashboardShell() {
         <Navbar onLogout={logout} />
         <main className="min-w-0 flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top_right,rgba(20,184,166,0.055),transparent_34%)]">
           <div className="w-full px-4 py-6 sm:px-6 lg:px-8">
-            <ActivePage />
+            <ActivePage onNavigate={selectPage} navigationFilters={navigationFilters} />
           </div>
         </main>
       </div>
