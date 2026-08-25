@@ -28,4 +28,23 @@ function asyncHandler(fn) {
   return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 }
 
-module.exports = { query, beginTransaction, commit, rollback, ok, fail, asyncHandler };
+async function queryPage(req, sql, params = [], orderBy = '') {
+  const paginationRequested = req.query.page !== undefined || req.query.limit !== undefined;
+  if (!paginationRequested) return query(`${sql}${orderBy ? ` ${orderBy}` : ''}`, params);
+
+  const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(100, Math.max(1, Number.parseInt(req.query.limit, 10) || 10));
+  const countRows = await query(`SELECT COUNT(*) AS total FROM (${sql}) AS paginated_results`, params);
+  const total = Number(countRows[0]?.total || 0);
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  const effectivePage = Math.min(page, totalPages);
+  const offset = (effectivePage - 1) * limit;
+  const items = await query(`${sql}${orderBy ? ` ${orderBy}` : ''} LIMIT ? OFFSET ?`, [...params, limit, offset]);
+
+  return {
+    items,
+    pagination: { page: effectivePage, limit, total, total_pages: totalPages },
+  };
+}
+
+module.exports = { query, queryPage, beginTransaction, commit, rollback, ok, fail, asyncHandler };

@@ -1,4 +1,4 @@
-const { query, ok, fail, asyncHandler } = require('../utils/helper');
+const { query, queryPage, ok, fail, asyncHandler } = require('../utils/helper');
 
 // ----------------------------------------------------------------------------
 // Helpers
@@ -56,7 +56,8 @@ async function nextTransactionNumber(prefix) {
 // GET /api/stock/in?search=
 const getStockIn = asyncHandler(async (req, res) => {
   const search = req.query.search ? `%${req.query.search}%` : '%';
-  const rows = await query(
+  const dateCondition = req.query.date === 'today' ? ' AND st.transaction_date = CURDATE()' : '';
+  const rows = await queryPage(req,
     `SELECT
        st.id, p.product_name AS product, s.supplier_name AS supplier,
        pb.batch_number, pb.manufacture_date, pb.expiry_date,
@@ -68,9 +69,10 @@ const getStockIn = asyncHandler(async (req, res) => {
      JOIN product_batches pb ON pb.id = sti.batch_id
      LEFT JOIN suppliers s ON s.id = st.supplier_id
      WHERE st.transaction_type = 'stock_in'
-       AND (p.product_name LIKE ? OR pb.batch_number LIKE ? OR st.reference_number LIKE ?)
-     ORDER BY st.transaction_date DESC, st.id DESC`,
-    [search, search, search]
+       AND st.status = 'completed'
+       ${dateCondition}
+       AND (p.product_name LIKE ? OR pb.batch_number LIKE ? OR st.reference_number LIKE ?)`,
+    [search, search, search], 'ORDER BY st.transaction_date DESC, st.id DESC'
   );
   return ok(res, rows);
 });
@@ -188,7 +190,8 @@ const removeStockIn = asyncHandler(async (req, res) => {
 // GET /api/stock/out?search=
 const getStockOut = asyncHandler(async (req, res) => {
   const search = req.query.search ? `%${req.query.search}%` : '%';
-  const rows = await query(
+  const dateCondition = req.query.date === 'today' ? ' AND st.transaction_date = CURDATE()' : '';
+  const rows = await queryPage(req,
     `SELECT
        st.id, p.product_name AS product, pb.batch_number,
        sti.quantity, st.reason, st.reference_number, st.transaction_date
@@ -197,9 +200,10 @@ const getStockOut = asyncHandler(async (req, res) => {
      JOIN products p ON p.id = sti.product_id
      JOIN product_batches pb ON pb.id = sti.batch_id
      WHERE st.transaction_type = 'stock_out'
-       AND (p.product_name LIKE ? OR pb.batch_number LIKE ? OR st.reference_number LIKE ?)
-     ORDER BY st.transaction_date DESC, st.id DESC`,
-    [search, search, search]
+       AND st.status = 'completed'
+       ${dateCondition}
+       AND (p.product_name LIKE ? OR pb.batch_number LIKE ? OR st.reference_number LIKE ?)`,
+    [search, search, search], 'ORDER BY st.transaction_date DESC, st.id DESC'
   );
   return ok(res, rows);
 });
@@ -292,11 +296,26 @@ const removeStockOut = asyncHandler(async (req, res) => {
 // GET /api/stock/current?search=
 const getCurrentStock = asyncHandler(async (req, res) => {
   const search = req.query.search ? `%${req.query.search}%` : '%';
-  const rows = await query(
-    `SELECT * FROM v_current_stock
-     WHERE product_name LIKE ? OR product_code LIKE ?
-     ORDER BY product_name`,
-    [search, search]
+  const stockFilter = {
+    in_stock: 'AND current_stock.available_quantity > 0',
+    low_stock: 'AND current_stock.available_quantity > 0 AND current_stock.available_quantity <= current_stock.minimum_stock',
+    out_of_stock: 'AND current_stock.available_quantity = 0',
+  }[req.query.stock_status] || '';
+  const rows = await queryPage(req,
+    `SELECT * FROM (
+       SELECT p.id, p.product_code, p.product_name, c.name AS category, u.name AS unit,
+              COALESCE(SUM(CASE WHEN pb.status = 'active' THEN pb.available_quantity ELSE 0 END), 0) AS available_quantity,
+              p.minimum_stock
+         FROM products p
+         LEFT JOIN categories c ON c.id = p.category_id
+         LEFT JOIN units u ON u.id = p.unit_id
+         LEFT JOIN product_batches pb ON pb.product_id = p.id
+        WHERE p.status = 'active'
+        GROUP BY p.id, p.product_code, p.product_name, c.name, u.name, p.minimum_stock
+     ) current_stock
+     WHERE (current_stock.product_name LIKE ? OR current_stock.product_code LIKE ?)
+     ${stockFilter}`,
+    [search, search], 'ORDER BY product_name'
   );
   return ok(res, rows);
 });
@@ -304,11 +323,10 @@ const getCurrentStock = asyncHandler(async (req, res) => {
 // GET /api/stock/history?search=
 const getStockHistory = asyncHandler(async (req, res) => {
   const search = req.query.search ? `%${req.query.search}%` : '%';
-  const rows = await query(
+  const rows = await queryPage(req,
     `SELECT * FROM v_stock_history
-     WHERE product LIKE ? OR batch_number LIKE ?
-     ORDER BY date DESC`,
-    [search, search]
+     WHERE product LIKE ? OR batch_number LIKE ?`,
+    [search, search], 'ORDER BY date DESC'
   );
   return ok(res, rows);
 });

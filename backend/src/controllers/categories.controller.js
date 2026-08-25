@@ -1,12 +1,11 @@
-const { query, ok, fail, asyncHandler } = require('../utils/helper');
+const { query, queryPage, ok, fail, asyncHandler } = require('../utils/helper');
 
 // GET /api/categories?search=
 const getAll = asyncHandler(async (req, res) => {
   const search = req.query.search ? `%${req.query.search}%` : '%';
-  const rows = await query(
-    'SELECT * FROM categories WHERE name LIKE ? ORDER BY name',
-    [search]
-  );
+  const statusFilter = req.query.status ? ' AND status = ?' : '';
+  const params = req.query.status ? [search, req.query.status] : [search];
+  const rows = await queryPage(req, `SELECT * FROM categories WHERE name LIKE ?${statusFilter}`, params, 'ORDER BY name');
   return ok(res, rows);
 });
 

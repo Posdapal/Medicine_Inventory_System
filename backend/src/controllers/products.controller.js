@@ -1,4 +1,4 @@
-const { query, ok, fail, asyncHandler } = require('../utils/helper');
+const { query, queryPage, ok, fail, asyncHandler } = require('../utils/helper');
 
 // GET /api/products?search=&category_id=&status=
 const getAll = asyncHandler(async (req, res) => {
@@ -7,24 +7,43 @@ const getAll = asyncHandler(async (req, res) => {
   const params = [];
 
   if (search) {
-    conditions.push('(product_name LIKE ? OR product_code LIKE ? OR generic_name LIKE ?)');
+    conditions.push('(p.product_name LIKE ? OR p.product_code LIKE ? OR p.generic_name LIKE ?)');
     params.push(`%${search}%`, `%${search}%`, `%${search}%`);
   }
-  if (category_id) { conditions.push('category_id = ?'); params.push(category_id); }
-  if (status) { conditions.push('status = ?'); params.push(status); }
+  if (category_id) { conditions.push('p.category_id = ?'); params.push(category_id); }
+  if (status) { conditions.push('p.status = ?'); params.push(status); }
 
-  let sql = 'SELECT * FROM v_products';
+  let sql = `
+    SELECT p.id, p.category_id, p.unit_id, p.product_code, p.product_name,
+           p.generic_name, p.minimum_stock, p.status,
+           c.name AS category_name, u.name AS unit_name, u.abbreviation AS unit_abbreviation,
+           (SELECT COALESCE(SUM(pb.available_quantity), 0)
+              FROM product_batches pb
+             WHERE pb.product_id = p.id AND pb.status = 'active') AS available_quantity
+      FROM products p
+      LEFT JOIN categories c ON c.id = p.category_id
+      LEFT JOIN units u ON u.id = p.unit_id`;
   if (conditions.length) sql += ' WHERE ' + conditions.join(' AND ');
-  sql += ' ORDER BY product_name';
-
-  const rows = await query(sql, params);
+  const rows = await queryPage(req, sql, params, 'ORDER BY p.product_name');
   return ok(res, rows);
 });
 
 // GET /api/products/:id  (includes its batches)
 const getById = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const rows = await query('SELECT * FROM v_products WHERE id = ?', [id]);
+  const rows = await query(
+    `SELECT p.id, p.category_id, p.unit_id, p.product_code, p.product_name,
+            p.generic_name, p.minimum_stock, p.status,
+            c.name AS category_name, u.name AS unit_name, u.abbreviation AS unit_abbreviation,
+            (SELECT COALESCE(SUM(pb.available_quantity), 0)
+               FROM product_batches pb
+              WHERE pb.product_id = p.id AND pb.status = 'active') AS available_quantity
+       FROM products p
+       LEFT JOIN categories c ON c.id = p.category_id
+       LEFT JOIN units u ON u.id = p.unit_id
+      WHERE p.id = ?`,
+    [id]
+  );
   if (!rows[0]) return fail(res, 'Product not found', 404);
 
   const batches = await query(
