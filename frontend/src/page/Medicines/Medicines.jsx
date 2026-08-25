@@ -1,6 +1,8 @@
+/* eslint-disable no-empty -- mutation errors are displayed by the global API interceptor */
 import { useEffect, useState } from "react";
 import { Search, Plus, Trash2, X, Edit2 } from "lucide-react";
 import { medicinesApi, categoriesApi, suppliersApi } from "../../api/endpoints";
+import { Table } from "../../components/ui/Common";
 import Swal from 'sweetalert2';
 
 function PageHeader({ title, subtitle, action }) {
@@ -35,40 +37,6 @@ function Toolbar({ query, setQuery, placeholder, onAdd, addLabel }) {
           <Plus size={15} /> {addLabel}
         </button>
       )}
-    </div>
-  );
-}
-
-function Table({ columns, rows }) {
-  return (
-    <div className="overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-[#1E2A45] text-left text-[#8B96AE] text-xs uppercase tracking-wide">
-              {columns.map((c) => (
-                <th key={c.key} className="px-4 py-3 font-medium">{c.label}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, i) => (
-              <tr key={row.id ?? i} className="border-b border-[#1E2A45] last:border-0 hover:bg-white/[0.02] transition-colors">
-                {columns.map((c) => (
-                  <td key={c.key} className="px-4 py-3 text-[#D7DEEB]">{c.render ? c.render(row) : row[c.key]}</td>
-                ))}
-              </tr>
-            ))}
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={columns.length} className="px-4 py-10 text-center text-[#5D6B85] text-sm">
-                  No records match your search.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
     </div>
   );
 }
@@ -166,10 +134,11 @@ function MedicineForm({ initialData, onSubmit, onClose, categories, suppliers, s
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="block text-xs font-medium text-[#8B96AE] uppercase mb-1.5">Medicine Name</label>
+        <label className="block text-xs font-medium text-[#8B96AE] uppercase mb-1.5">Medicine Name <span className="text-rose-400" aria-hidden="true">*</span></label>
         <input
           required
           type="text"
+          placeholder="e.g. Amoxicillin 500 mg"
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           className="w-full bg-[#070B12] border border-[#1E2A45] rounded-lg px-3 py-2 text-sm text-[#E7ECF6] focus:outline-none focus:ring-2 focus:ring-blue-500/40"
@@ -190,12 +159,13 @@ function MedicineForm({ initialData, onSubmit, onClose, categories, suppliers, s
           </select>
         </div>
         <div>
-          <label className="block text-xs font-medium text-[#8B96AE] uppercase mb-1.5">Price ($)</label>
+          <label className="block text-xs font-medium text-[#8B96AE] uppercase mb-1.5">Price ($) <span className="text-rose-400" aria-hidden="true">*</span></label>
           <input
             required
             type="number"
             step="0.01"
             min="0"
+            placeholder="e.g. 12.50"
             value={formData.price}
             onChange={(e) => setFormData({ ...formData, price: e.target.value })}
             className="w-full bg-[#070B12] border border-[#1E2A45] rounded-lg px-3 py-2 text-sm text-[#E7ECF6] focus:outline-none focus:ring-2 focus:ring-blue-500/40"
@@ -219,22 +189,24 @@ function MedicineForm({ initialData, onSubmit, onClose, categories, suppliers, s
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs font-medium text-[#8B96AE] uppercase mb-1.5">Stock Level</label>
+          <label className="block text-xs font-medium text-[#8B96AE] uppercase mb-1.5">Stock Level <span className="text-rose-400" aria-hidden="true">*</span></label>
           <input
             required
             type="number"
             min="0"
+            placeholder="e.g. 100"
             value={formData.stock}
             onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
             className="w-full bg-[#070B12] border border-[#1E2A45] rounded-lg px-3 py-2 text-sm text-[#E7ECF6] focus:outline-none focus:ring-2 focus:ring-blue-500/40"
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-[#8B96AE] uppercase mb-1.5">Reorder Point</label>
+          <label className="block text-xs font-medium text-[#8B96AE] uppercase mb-1.5">Reorder Point <span className="text-rose-400" aria-hidden="true">*</span></label>
           <input
             required
             type="number"
             min="0"
+            placeholder="e.g. 20"
             value={formData.reorder}
             onChange={(e) => setFormData({ ...formData, reorder: e.target.value })}
             className="w-full bg-[#070B12] border border-[#1E2A45] rounded-lg px-3 py-2 text-sm text-[#E7ECF6] focus:outline-none focus:ring-2 focus:ring-blue-500/40"
@@ -326,8 +298,7 @@ function Medicines() {
       await medicinesApi.create(mapMedicineToApi(formData, categories, suppliers));
       setIsAddOpen(false);
       await loadMedicines(query || undefined);
-    } catch (err) {
-      alert(err.message);
+    } catch {
     } finally {
       setSubmitting(false);
     }
@@ -339,8 +310,7 @@ function Medicines() {
       await medicinesApi.update(editingMedicine.id, mapMedicineToApi(formData, categories, suppliers));
       setEditingMedicine(null);
       await loadMedicines(query || undefined);
-    } catch (err) {
-      alert(err.message);
+    } catch {
     } finally {
       setSubmitting(false);
     }
@@ -380,9 +350,7 @@ function Medicines() {
         await medicinesApi.remove(id);
         await loadPatients(query || undefined);
   
-        Swal.fire("Deleted!", "Medicine has been deleted.", "success");
-      } catch (err) {
-        Swal.fire("Error!", "An error occurred while deleting the medicine.", "error");
+      } catch {
       }
     };
 

@@ -1,14 +1,16 @@
+/* eslint-disable no-empty -- mutation errors are displayed by the global API interceptor */
 // Categories.jsx — Products > Categories
 // Fields follow the CATEGORIES entity in the ERD: name, description, status.
 import React, { useEffect, useState } from "react";
 import { Trash2, Edit2, Download } from "lucide-react";
 import { categoriesApi } from "../../api/endpoints";
 import {
-  PageHeader, Badge, Table, Toolbar, Modal, FormField, inputClass,
-  ImportButton, ActionButton,
+  PageHeader, Badge, Table, Toolbar, Modal, FormInput, FormSelect,
+  ImportButton, ActionButton, Pagination,
 } from "../../components/ui/Common";
-import { downloadCsv, downloadTemplate, parseCsvFile } from "../../utils/ExportUtils";
+import { downloadExcel, downloadTemplate, parseCsvFile } from "../../utils/ExportUtils";
 import Swal from "sweetalert2";
+import { toast } from "../../utils/toast";
 
 const CSV_HEADERS = ["name", "description", "status"];
 
@@ -38,74 +40,24 @@ function FieldError({ message }) {
 }
 
 function CategoryForm({ initialData, onSubmit, onClose, submitting }) {
-  const [form, setForm] = useState(initialData || { name: "", description: "", status: "active" });
-  const [errors, setErrors] = useState({});
-  const [touched, setTouched] = useState({});
-
-  const handleChange = (field) => (e) => {
-    const value = e.target.value;
-    setForm((prev) => ({ ...prev, [field]: value }));
-    if (touched[field] || errors[field]) {
-      const nextErrors = validateCategoryForm({ ...form, [field]: value });
-      setErrors((prev) => ({ ...prev, [field]: nextErrors[field] }));
-    }
-  };
-
-  const handleBlur = (field) => () => {
-    setTouched((prev) => ({ ...prev, [field]: true }));
-    const nextErrors = validateCategoryForm(form);
-    setErrors((prev) => ({ ...prev, [field]: nextErrors[field] }));
-  };
-
-
+  const [form, setForm] = useState(initialData || { name: "", description: "", status: "" });
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const nextErrors = validateCategoryForm(form);
-    setErrors(nextErrors);
-    setTouched({ name: true, description: true });
-
-    if (Object.keys(nextErrors).length > 0) {
-      return;
-    }
-    onSubmit(form);
+    onSubmit({ ...form, name: form.name.trim(), description: form.description.trim() });
   };
 
   const fieldClass = (field) =>
       `${inputClass} ${errors[field] ? "border-rose-500/60 focus:ring-rose-500/40" : ""}`;
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="space-y-4">
-      <FormField label="Category Name">
-        {/* <input required type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={inputClass} /> */}
-        <input
-          type="text"
-          value={form.name}
-          onChange={handleChange("name")}
-          onBlur={handleBlur("name")}
-          className={fieldClass("name")}
-          aria-invalid={!!errors.name}
-        />
-        <FieldError message={errors.name} />
-      </FormField>
-      <FormField label="Description">
-        {/* <input type="text" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className={inputClass} /> */}
-         <input
-          type="text"
-          value={form.description}
-          onChange={handleChange("description")}
-          onBlur={handleBlur("description")}
-          className={fieldClass("description")}
-          aria-invalid={!!errors.description}
-        />
-        <FieldError message={errors.description} />
-      </FormField>
-      <FormField label="Status">
-        <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className={inputClass}>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <FormInput label="Category Name" required type="text" minLength={2} maxLength={100} placeholder="e.g. Antibiotics" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+      <FormInput label="Description" type="text" maxLength={255} placeholder="Briefly describe this category" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+      <FormSelect label="Status" required placeholder="Select a status" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
-        </select>
-      </FormField>
+      </FormSelect>
       <div className="flex justify-end gap-3 pt-2">
         <button type="button" onClick={onClose} className="px-4 py-2 border border-[#1E2A45] text-[#8B96AE] hover:text-[#E7ECF6] hover:bg-white/[0.02] text-sm font-medium rounded-lg transition-colors">
           Cancel
@@ -118,7 +70,7 @@ function CategoryForm({ initialData, onSubmit, onClose, submitting }) {
   );
 }
 
-function Categories() {
+function Categories({ navigationFilters = {} }) {
   const [query, setQuery] = useState("");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -126,13 +78,15 @@ function Categories() {
   const [submitting, setSubmitting] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
+  const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, total_pages: 1 });
 
-  const loadCategories = async (search) => {
+  const loadCategories = async (search, page = pagination.page, limit = pagination.limit) => {
     setLoading(true);
     setError("");
     try {
-      const { data } = await categoriesApi.getAll(search);
-      setRows(data);
+      const { data } = await categoriesApi.getAll({ search, page, limit, status: navigationFilters.status });
+      setRows(data.items);
+      setPagination(data.pagination);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -141,10 +95,12 @@ function Categories() {
   };
 
   useEffect(() => {
-    const timeout = setTimeout(() => loadCategories(query || undefined), 300);
+    const timeout = setTimeout(() => loadCategories(query || undefined, pagination.page, pagination.limit), 300);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query]);
+  }, [query, pagination.page, pagination.limit, navigationFilters.status]);
+
+  useEffect(() => { setPagination((current) => ({ ...current, page: 1 })); }, [query]);
 
   const handleAdd = async (formData) => {
     setSubmitting(true);
@@ -152,8 +108,7 @@ function Categories() {
       await categoriesApi.create(formData);
       setIsAddOpen(false);
       await loadCategories(query || undefined);
-    } catch (err) {
-      alert(err.message);
+    } catch {
     } finally {
       setSubmitting(false);
     }
@@ -165,8 +120,7 @@ function Categories() {
       await categoriesApi.update(editingCategory.id, formData);
       setEditingCategory(null);
       await loadCategories(query || undefined);
-    } catch (err) {
-      alert(err.message);
+    } catch {
     } finally {
       setSubmitting(false);
     }
@@ -196,24 +150,22 @@ function Categories() {
           animate__fadeOutDown
           animate__faster
         `,
-      },
-    });
-
-    // Cancel or dismiss (clicking outside, Esc) both land here and just stop
-    if (!result.isConfirmed) return;
-
-    try {
-      await categoriesApi.remove(id);
-      await loadCategories(query || undefined);
-
-      Swal.fire("Deleted!", "Category has been deleted.", "success");
-    } catch (err) {
-      Swal.fire("Error!", "An error occurred while deleting the category.", "error");
-    }
+        },
+      });
+  
+      // Cancel or dismiss (clicking outside, Esc) both land here and just stop
+      if (!result.isConfirmed) return;
+  
+      try {
+        await categoriesApi.remove(id);
+        await loadCategories(query || undefined);
+  
+      } catch {
+      }
   };
 
   const handleExport = () => {
-    downloadCsv("categories.csv", CSV_HEADERS, rows.map((r) => [r.name, r.description, r.status]));
+    downloadExcel("categories.xlsx", "Categories", ["Name", "Description", "Status"], rows.map((r) => [r.name, r.description, r.status]), (pagination.page - 1) * pagination.limit);
   };
 
   const handleImport = async (file) => {
@@ -221,12 +173,12 @@ function Categories() {
       const records = await parseCsvFile(file);
       setSubmitting(true);
       for (const r of records) {
-        await categoriesApi.create({ name: r.name, description: r.description, status: r.status || "active" });
+        await categoriesApi.create({ name: r.name, description: r.description, status: r.status || "active" }, { skipToast: true });
       }
       await loadCategories(query || undefined);
-      alert(`Imported ${records.length} categor${records.length === 1 ? "y" : "ies"}.`);
+      toast.success(`Imported ${records.length} categor${records.length === 1 ? "y" : "ies"}.`);
     } catch (err) {
-      alert(err.message || "Failed to import categories.");
+      toast.error(err.message || "Failed to import categories.");
     } finally {
       setSubmitting(false);
     }
@@ -252,6 +204,7 @@ function Categories() {
       {loading ? (
         <p className="text-sm text-[#8B96AE]">Loading categories...</p>
       ) : (
+        <>
         <Table
           columns={[
             { key: "name", label: "Name" },
@@ -273,7 +226,10 @@ function Categories() {
             },
           ]}
           rows={rows}
+          rowOffset={(pagination.page - 1) * pagination.limit}
         />
+        <Pagination page={pagination.page} totalPages={pagination.total_pages} total={pagination.total} limit={pagination.limit} onPageChange={(page) => setPagination((current) => ({ ...current, page }))} onLimitChange={(limit) => setPagination((current) => ({ ...current, page: 1, limit }))} />
+        </>
       )}
 
       <Modal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} title="Add New Category">

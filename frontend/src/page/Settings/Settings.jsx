@@ -1,3 +1,4 @@
+/* eslint-disable no-empty -- mutation errors are displayed by the global API interceptor */
 import { useContext, useEffect, useMemo, useState } from "react";
 import { BellRing, KeyRound, LockKeyhole, Mail, Palette, Save, ShieldCheck, UserRound } from "lucide-react";
 import Swal from "sweetalert2";
@@ -84,22 +85,11 @@ function Settings() {
     loadSettings();
   }, []);
 
-  const toast = (title) => Swal.fire({
-    title,
-    icon: "success",
-    timer: 1800,
-    showConfirmButton: false,
-    background: "#0f172a",
-    color: "#f1f5f9",
-  });
-
   const saveProfile = async () => {
     setSaving(true);
     try {
       await settingsApi.updateProfile(profile);
-      toast("Profile updated");
-    } catch (err) {
-      Swal.fire({ title: "Unable to save", text: err.message, icon: "error", background: "#0f172a", color: "#f1f5f9" });
+    } catch {
     } finally {
       setSaving(false);
     }
@@ -143,9 +133,7 @@ function Settings() {
         new_password: passwordForm.new_password,
       });
       setPasswordForm({ current_password: "", new_password: "", confirm_password: "" });
-      toast("Password updated");
-    } catch (err) {
-      Swal.fire({ title: "Unable to update", text: err.message, icon: "error", background: "#0f172a", color: "#f1f5f9" });
+    } catch {
     } finally {
       setSaving(false);
     }

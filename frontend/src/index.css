@@ -2,6 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
+.inventory-toast {
+  border: 1px solid rgba(148, 163, 184, 0.28) !important;
+  border-radius: 0.875rem !important;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.2) !important;
+  padding: 0.75rem 0.875rem !important;
+}
+
+.inventory-toast-error {
+  background: #f43f5e !important;
+}
+
+.inventory-toast-success {
+  background: #14b8a6 !important;
+}
+
 @layer base {
   * {
     scrollbar-width: thin;

@@ -8,6 +8,7 @@ const cors = require('cors');
 const db = require('./src/config/db');
 const routes = require('./src/routes');
 const { notFound, errorHandler } = require('./src/middleware/errorHandler.middleware');
+const { startExpiryAlertScheduler } = require('./src/schedulers/expiryAlert.scheduler');
 
 const app = express();
 app.use(cors());
@@ -28,4 +29,5 @@ const PORT = process.env.PORT || 8081;
 
 app.listen(PORT, () => {
   console.log(`Server Running on port ${PORT}`);
+  startExpiryAlertScheduler();
 });

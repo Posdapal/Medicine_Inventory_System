@@ -55,13 +55,11 @@ import Settings from "./page/Settings/Settings";
 import Navbar from "./components/Navbar/Navbar";
 import { SidebarItem } from "./components/ui/Primitives";
 
-
 // =====================================================
 // SIDEBAR NAVIGATION
 // =====================================================
 
 const NAV = [
-
   // ===================================================
   // DASHBOARD
   // ===================================================
@@ -74,7 +72,6 @@ const NAV = [
     Component: Dashboard,
   },
 
-
   // ===================================================
   // PRODUCTS
   // ===================================================
@@ -85,31 +82,28 @@ const NAV = [
     icon: Package,
 
     children: [
-
       {
         key: "product-list",
-        label: "Product List",
-        path: "/dashboard/products",
+        label: "Products",
+        path: "/products",
         Component: Products,
       },
 
       {
         key: "categories",
         label: "Categories",
-        path: "/dashboard/categories",
+        path: "/products/categories",
         Component: Categories,
       },
 
       {
         key: "units",
         label: "Units",
-        path: "/dashboard/units",
+        path: "/products/units",
         Component: Units,
       },
-
     ],
   },
-
 
   // ===================================================
   // SUPPLIERS
@@ -119,10 +113,9 @@ const NAV = [
     key: "suppliers",
     label: "Suppliers",
     icon: Truck,
-    path: "/dashboard/suppliers",
+    path: "/suppliers",
     Component: Suppliers,
   },
-
 
   // ===================================================
   // STOCK MANAGEMENT
@@ -134,38 +127,35 @@ const NAV = [
     icon: Boxes,
 
     children: [
-
       {
         key: "stock-in",
         label: "Stock In",
-        path: "/dashboard/stock-in",
+        path: "/stock/stock-in",
         Component: StockIn,
       },
 
       {
         key: "stock-out",
         label: "Stock Out",
-        path: "/dashboard/stock-out",
+        path: "/stock/stock-out",
         Component: StockOut,
       },
 
       {
         key: "current-stock",
         label: "Current Stock",
-        path: "/dashboard/current-stock",
+        path: "/stock/current-stock",
         Component: CurrentStock,
       },
 
       {
         key: "stock-history",
         label: "Stock History",
-        path: "/dashboard/stock-history",
+        path: "/stock/stock-history",
         Component: StockHistory,
       },
-
     ],
   },
-
 
   // ===================================================
   // EXPIRY MANAGEMENT
@@ -177,36 +167,22 @@ const NAV = [
     icon: AlertTriangle,
 
     children: [
-
       {
         key: "near-expiry",
         label: "Near Expiry",
-        path: "/dashboard/near-expiry",
+        path: "/expiry/near-expiry",
         Component: NearExpiry,
       },
 
       {
         key: "expired-products",
         label: "Expired Products",
-        path: "/dashboard/expired-products",
+        path: "/expiry/expired-products",
         Component: ExpiredProducts,
       },
-
     ],
   },
 
-
-  // ===================================================
-  // REPORTS
-  // ===================================================
-
-  {
-    key: "reports",
-    label: "Reports",
-    icon: BarChart3,
-    path: "/dashboard/reports",
-    Component: Reports,
-  },
 
 
   // ===================================================
@@ -217,92 +193,84 @@ const NAV = [
     key: "users",
     label: "Users",
     icon: UserCog,
-    path: "/dashboard/users",
+    path: "/users",
     Component: Users,
   },
 
-];
+    // ===================================================
+  // REPORTS
+  // ===================================================
 
+  {
+    key: "reports",
+    label: "Reports",
+    icon: BarChart3,
+    path: "/reports",
+    Component: Reports,
+  },
+];
 
 // =====================================================
 // FIND PAGE BY URL
 // =====================================================
 
 function findPageByPath(pathname) {
+  // ---------------------------------------------------
+  // Search all NAV items
+  // ---------------------------------------------------
+
+  for (const item of NAV) {
+    // -------------------------------------------------
+    // Top-level page
+    // -------------------------------------------------
+
+    if (item.path === pathname) {
+      return {
+        key: item.key,
+        Component: item.Component,
+      };
+    }
+
+    // -------------------------------------------------
+    // Child page
+    // -------------------------------------------------
+
+    if (item.children) {
+      const child = item.children.find(
+        (child) => child.path === pathname
+      );
+
+      if (child) {
+        return {
+          key: child.key,
+          Component: child.Component,
+          parentKey: item.key,
+        };
+      }
+    }
+  }
+
+  // ---------------------------------------------------
+  // Settings
+  // ---------------------------------------------------
+
+  if (pathname === "/settings") {
+    return {
+      key: "settings",
+      Component: Settings,
+    };
+  }
 
   // ---------------------------------------------------
   // Dashboard
   // ---------------------------------------------------
 
   if (pathname === "/dashboard") {
-
     return {
       key: "dashboard",
       Component: Dashboard,
     };
-
   }
-
-
-  // ---------------------------------------------------
-  // Search NAV
-  // ---------------------------------------------------
-
-  for (const item of NAV) {
-
-    // -------------------------------------------------
-    // Top-level page
-    // -------------------------------------------------
-
-    if (item.path === pathname) {
-
-      return {
-        key: item.key,
-        Component: item.Component,
-      };
-
-    }
-
-
-    // -------------------------------------------------
-    // Nested page
-    // -------------------------------------------------
-
-    if (item.children) {
-
-      const child = item.children.find(
-        (child) =>
-          child.path === pathname
-      );
-
-      if (child) {
-
-        return {
-          key: child.key,
-          Component: child.Component,
-          parentKey: item.key,
-        };
-
-      }
-
-    }
-
-  }
-
-
-  // ---------------------------------------------------
-  // Settings
-  // ---------------------------------------------------
-
-  if (pathname === "/dashboard/settings") {
-
-    return {
-      key: "settings",
-      Component: Settings,
-    };
-
-  }
-
 
   // ---------------------------------------------------
   // Default
@@ -312,41 +280,34 @@ function findPageByPath(pathname) {
     key: "dashboard",
     Component: Dashboard,
   };
-
 }
-
 
 // =====================================================
 // FIND PARENT GROUP
 // =====================================================
 
 function parentGroupOf(pageKey) {
-
-  const group = NAV.find(
-    (item) =>
-      item.children?.some(
-        (child) =>
-          child.key === pageKey
-      )
+  const group = NAV.find((item) =>
+    item.children?.some(
+      (child) => child.key === pageKey
+    )
   );
 
   return group?.key;
-
 }
-
 
 // =====================================================
 // DASHBOARD SHELL
 // =====================================================
 
 function DashboardShell() {
-
   const { logout } = useAuth();
 
   const navigate = useNavigate();
-
   const location = useLocation();
 
+  const [navigationFilters, setNavigationFilters] =
+    useState({});
 
   // ===================================================
   // SIDEBAR STATE
@@ -357,7 +318,6 @@ function DashboardShell() {
 
   const [sidebarCollapsed, setSidebarCollapsed] =
     useState(false);
-
 
   // ===================================================
   // CURRENT PAGE
@@ -371,181 +331,121 @@ function DashboardShell() {
 
   const ActivePage = active.Component;
 
-
   // ===================================================
   // AUTOMATICALLY OPEN PARENT GROUP
-  //
-  // This only opens the parent.
-  //
-  // It DOES NOT select the parent.
-  //
   // ===================================================
 
   useEffect(() => {
-
-    const parentKey =
-      parentGroupOf(page);
+    const parentKey = parentGroupOf(page);
 
     if (!parentKey) {
       return;
     }
 
     setOpenGroups((prev) => {
-
       const next = new Set(prev);
 
       next.add(parentKey);
 
       return next;
-
     });
-
   }, [page]);
-
 
   // ===================================================
   // TOGGLE GROUP
-  //
-  // Clicking Products / Stock Management /
-  // Expiry Management ONLY opens or closes.
-  //
-  // It does NOT navigate.
-  //
   // ===================================================
 
   const toggleGroup = (key) => {
-
     // -------------------------------------------------
-    // If sidebar is collapsed
+    // Sidebar is collapsed
     // -------------------------------------------------
 
     if (sidebarCollapsed) {
-
       setSidebarCollapsed(false);
 
       setOpenGroups((prev) => {
-
         const next = new Set(prev);
 
         next.add(key);
 
         return next;
-
       });
 
       return;
     }
 
-
     // -------------------------------------------------
-    // Normal open / close
+    // Open / close group
     // -------------------------------------------------
 
     setOpenGroups((prev) => {
-
       const next = new Set(prev);
 
       if (next.has(key)) {
-
         next.delete(key);
-
       } else {
-
         next.add(key);
-
       }
 
       return next;
-
     });
-
   };
-
 
   // ===================================================
   // SELECT PAGE
-  //
-  // This is ONLY used for actual pages.
-  //
-  // Example:
-  //
-  // Product List -> /dashboard/products
-  // Categories   -> /dashboard/categories
-  // Units        -> /dashboard/units
-  //
   // ===================================================
 
-  const selectPage = (item, groupKey = null) => {
+  const selectPage = (
+    item,
+    groupKey,
+    filters = {}
+  ) => {
+    setNavigationFilters(filters);
 
     // -------------------------------------------------
-    // If this is a nested page,
-    // keep its parent group open.
+    // Open parent group
     // -------------------------------------------------
 
     if (groupKey) {
-
       setOpenGroups((prev) => {
-
         const next = new Set(prev);
 
         next.add(groupKey);
 
         return next;
-
       });
-
     }
 
-
     // -------------------------------------------------
-    // Navigate ONLY to clicked item
+    // Navigate
     // -------------------------------------------------
 
-    if (item.path) {
-
+    if (item?.path) {
       navigate(item.path);
-
     }
-
   };
-
 
   // ===================================================
   // SELECT GROUP
-  //
-  // IMPORTANT:
-  //
-  // This NEVER calls navigate().
-  //
-  // Products:
-  //     click -> open/close only
-  //
   // ===================================================
 
   const selectGroup = (item) => {
-
     toggleGroup(item.key);
-
   };
-
 
   // ===================================================
   // SETTINGS
   // ===================================================
 
   const goToSettings = () => {
-
-    navigate("/dashboard/settings");
-
+    navigate("/settings");
   };
-
 
   // ===================================================
   // UI
   // ===================================================
 
   return (
-
     <div
       className="
         flex
@@ -554,7 +454,6 @@ function DashboardShell() {
         text-slate-100
       "
     >
-
       {/* =================================================
           SIDEBAR
       ================================================= */}
@@ -583,7 +482,6 @@ function DashboardShell() {
           }
         `}
       >
-
         {/* =================================================
             LOGO
         ================================================= */}
@@ -604,7 +502,6 @@ function DashboardShell() {
             }
           `}
         >
-
           {/* Logo */}
 
           <div
@@ -624,14 +521,11 @@ function DashboardShell() {
               shadow-teal-950/50
             "
           >
-
             <Cross
               size={21}
               strokeWidth={2.5}
             />
-
           </div>
-
 
           {/* System name */}
 
@@ -647,7 +541,6 @@ function DashboardShell() {
               }
             `}
           >
-
             <p
               className="
                 truncate
@@ -673,22 +566,17 @@ function DashboardShell() {
             >
               System
             </p>
-
           </div>
-
 
           {/* Collapse button */}
 
           <button
             type="button"
-
             onClick={() =>
               setSidebarCollapsed(
-                (collapsed) =>
-                  !collapsed
+                (collapsed) => !collapsed
               )
             }
-
             className="
               flex
               h-9
@@ -705,45 +593,30 @@ function DashboardShell() {
               focus-visible:ring-2
               focus-visible:ring-teal-400
             "
-
             aria-label={
               sidebarCollapsed
                 ? "Expand sidebar"
                 : "Collapse sidebar"
             }
-
             title={
               sidebarCollapsed
                 ? "Expand sidebar"
                 : "Collapse sidebar"
             }
           >
-
             {sidebarCollapsed ? (
-
-              <PanelLeftOpen
-                size={18}
-              />
-
+              <PanelLeftOpen size={18} />
             ) : (
-
-              <PanelLeftClose
-                size={18}
-              />
-
+              <PanelLeftClose size={18} />
             )}
-
           </button>
-
         </div>
-
 
         {/* =================================================
             MAIN MENU TITLE
         ================================================= */}
 
         {!sidebarCollapsed && (
-
           <div
             className="
               px-4
@@ -758,9 +631,7 @@ function DashboardShell() {
           >
             Main menu
           </div>
-
         )}
-
 
         {/* =================================================
             NAVIGATION
@@ -775,155 +646,87 @@ function DashboardShell() {
             pb-4
           "
         >
-
           {NAV.map((item) => {
-
             const Icon = item.icon;
 
-
             // =================================================
-            // NORMAL / TOP-LEVEL ITEM
-            //
-            // Dashboard
-            // Suppliers
-            // Reports
-            // Users
+            // TOP-LEVEL ITEM
             // =================================================
 
             if (!item.children) {
-
               const isActive =
-                location.pathname ===
-                item.path;
-
+                location.pathname === item.path;
 
               return (
-
                 <SidebarItem
                   key={item.key}
-
                   onClick={() =>
                     selectPage(item)
                   }
-
                   icon={Icon}
-
                   label={item.label}
-
                   active={isActive}
-
-                  collapsed={
-                    sidebarCollapsed
-                  }
-
+                  collapsed={sidebarCollapsed}
                   title={
                     sidebarCollapsed
                       ? item.label
                       : undefined
                   }
                 />
-
               );
-
             }
-
 
             // =================================================
             // GROUP
-            //
-            // Products
-            // Stock Management
-            // Expiry Management
             // =================================================
 
             const isOpen =
-              openGroups.has(
-                item.key
-              );
+              openGroups.has(item.key);
 
-
-            // =================================================
-            // IMPORTANT
-            //
-            // Parent group is NEVER selected.
-            //
-            // Even when:
-            //
-            // Products
-            //    Product List <- selected
-            //
-            // "Products" itself remains unselected.
-            //
-            // =================================================
+            // Parent itself is not active
 
             const groupIsActive = false;
 
-
             return (
-
-              <div
-                key={item.key}
-              >
-
+              <div key={item.key}>
                 {/* =================================================
-                    PARENT GROUP
+                    GROUP BUTTON
                 ================================================= */}
 
                 <SidebarItem
                   onClick={() =>
                     selectGroup(item)
                   }
-
                   icon={Icon}
-
                   label={item.label}
-
-                  /*
-                   * IMPORTANT:
-                   *
-                   * Parent is never active.
-                   */
-                  active={
-                    groupIsActive
-                  }
-
-                  collapsed={
-                    sidebarCollapsed
-                  }
-
+                  active={groupIsActive}
+                  collapsed={sidebarCollapsed}
                   title={
                     sidebarCollapsed
                       ? item.label
                       : undefined
                   }
-
                   suffix={
                     sidebarCollapsed
                       ? null
                       : isOpen ? (
-
                           <ChevronDown
                             size={15}
                           />
-
                         ) : (
-
                           <ChevronRight
                             size={15}
                           />
-
                         )
                   }
                 />
 
-
                 {/* =================================================
-                    NESTED CHILDREN
+                    CHILDREN
                 ================================================= */}
 
                 {isOpen &&
                   !sidebarCollapsed && (
-
                     <div
                       className="
                         ml-5
@@ -934,74 +737,38 @@ function DashboardShell() {
                         pl-2
                       "
                     >
-
                       {item.children.map(
                         (child) => {
-
-                          // =================================================
-                          // ONLY THE CURRENT URL IS ACTIVE
-                          //
-                          // Example:
-                          //
-                          // /dashboard/products
-                          //
-                          // Product List = true
-                          // Categories   = false
-                          // Units        = false
-                          //
-                          // =================================================
-
                           const isActive =
                             location.pathname ===
                             child.path;
 
-
                           return (
-
                             <SidebarItem
-                              key={
-                                child.key
-                              }
-
+                              key={child.key}
                               onClick={() =>
                                 selectPage(
                                   child,
                                   item.key
                                 )
                               }
-
                               label={
                                 child.label
                               }
-
-                              /*
-                               * Only the clicked/current
-                               * child becomes active.
-                               */
                               active={
                                 isActive
                               }
-
                               nested
                             />
-
                           );
-
                         }
                       )}
-
                     </div>
-
                   )}
-
               </div>
-
             );
-
           })}
-
         </nav>
-
 
         {/* =================================================
             BOTTOM SIDEBAR
@@ -1015,31 +782,17 @@ function DashboardShell() {
             p-3
           "
         >
-
-          {/* =================================================
-              SETTINGS
-          ================================================= */}
+          {/* Settings */}
 
           <SidebarItem
-            onClick={
-              goToSettings
-            }
-
-            icon={
-              SettingsIcon
-            }
-
+            onClick={goToSettings}
+            icon={SettingsIcon}
             label="Settings"
-
             active={
               location.pathname ===
-              "/dashboard/settings"
+              "/settings"
             }
-
-            collapsed={
-              sidebarCollapsed
-            }
-
+            collapsed={sidebarCollapsed}
             title={
               sidebarCollapsed
                 ? "Settings"
@@ -1047,65 +800,28 @@ function DashboardShell() {
             }
           />
 
-
-          {/* =================================================
-              LOGOUT
-          ================================================= */}
+          {/* Logout */}
 
           <SidebarItem
-            onClick={
-              logout
-            }
-
-            icon={
-              LogOut
-            }
-
+            onClick={logout}
+            icon={LogOut}
             label="Logout"
-
-            collapsed={
-              sidebarCollapsed
-            }
-
+            collapsed={sidebarCollapsed}
             title={
               sidebarCollapsed
                 ? "Logout"
                 : undefined
             }
           />
-
         </div>
-
       </aside>
-
 
       {/* =================================================
           MAIN CONTENT
       ================================================= */}
 
-      <div
-        className="
-          flex
-          min-w-0
-          flex-1
-          flex-col
-        "
-      >
-
-        {/* =================================================
-            NAVBAR
-        ================================================= */}
-
-        <Navbar
-          onLogout={
-            logout
-          }
-        />
-
-
-        {/* =================================================
-            CONTENT
-        ================================================= */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <Navbar onLogout={logout} />
 
         <main
           className="
@@ -1115,7 +831,6 @@ function DashboardShell() {
             bg-[radial-gradient(circle_at_top_right,rgba(20,184,166,0.055),transparent_34%)]
           "
         >
-
           <div
             className="
               w-full
@@ -1125,34 +840,27 @@ function DashboardShell() {
               lg:px-8
             "
           >
-
-            <ActivePage />
-
+            <ActivePage
+              onNavigate={selectPage}
+              navigationFilters={
+                navigationFilters
+              }
+            />
           </div>
-
         </main>
-
       </div>
-
     </div>
-
   );
-
 }
 
-
 // =====================================================
-// APP
+// APP ROUTES
 // =====================================================
 
 export default function App() {
-
   return (
-
     <ThemeContextProvider>
-
       <AuthProvider>
-
         <Routes>
 
           {/* =================================================
@@ -1161,11 +869,8 @@ export default function App() {
 
           <Route
             path="/login"
-            element={
-              <Login />
-            }
+            element={<Login />}
           />
-
 
           {/* =================================================
               RESET PASSWORD
@@ -1178,36 +883,109 @@ export default function App() {
               />
             }
           >
-
             <Route
               path="/reset-password"
-              element={
-                <ResetPassword />
-              }
+              element={<ResetPassword />}
             />
-
           </Route>
 
-
           {/* =================================================
-              DASHBOARD
+              PROTECTED APPLICATION ROUTES
           ================================================= */}
 
           <Route
-            element={
-              <ProtectedRoute />
-            }
+            element={<ProtectedRoute />}
           >
 
+            {/* Dashboard */}
+
             <Route
-              path="/dashboard/*"
-              element={
-                <DashboardShell />
-              }
+              path="/dashboard"
+              element={<DashboardShell />}
+            />
+
+            {/* Products */}
+
+            <Route
+              path="/products"
+              element={<DashboardShell />}
+            />
+
+            <Route
+              path="/products/categories"
+              element={<DashboardShell />}
+            />
+
+            <Route
+              path="/products/units"
+              element={<DashboardShell />}
+            />
+
+            {/* Suppliers */}
+
+            <Route
+              path="/suppliers"
+              element={<DashboardShell />}
+            />
+
+            {/* =================================================
+                STOCK MANAGEMENT
+            ================================================= */}
+
+            <Route
+              path="/stock/stock-in"
+              element={<DashboardShell />}
+            />
+
+            <Route
+              path="/stock/stock-out"
+              element={<DashboardShell />}
+            />
+
+            <Route
+              path="/stock/current-stock"
+              element={<DashboardShell />}
+            />
+
+            <Route
+              path="/stock/stock-history"
+              element={<DashboardShell />}
+            />
+
+            {/* Expiry */}
+
+            <Route
+              path="/expiry/near-expiry"
+              element={<DashboardShell />}
+            />
+
+            <Route
+              path="/expiry/expired-products"
+              element={<DashboardShell />}
+            />
+
+            {/* Reports */}
+
+            <Route
+              path="/reports"
+              element={<DashboardShell />}
+            />
+
+            {/* Users */}
+
+            <Route
+              path="/users"
+              element={<DashboardShell />}
+            />
+
+            {/* Settings */}
+
+            <Route
+              path="/settings"
+              element={<DashboardShell />}
             />
 
           </Route>
-
 
           {/* =================================================
               UNKNOWN URL
@@ -1224,11 +1002,7 @@ export default function App() {
           />
 
         </Routes>
-
       </AuthProvider>
-
     </ThemeContextProvider>
-
   );
-
 }

@@ -12,21 +12,22 @@ export const authApi = {
 };
 
 export const dashboardApi = {
+  overview: () => axiosClient.get("/dashboard"),
   summary: () => axiosClient.get("/dashboard/summary"),
   stockInOutChart: () => axiosClient.get("/dashboard/stock-in-out-chart"),
 };
 
 // CATEGORIES: id, name, description, status
 export const categoriesApi = {
-  getAll: (search) => axiosClient.get("/categories", { params: { search } }),
-  create: (data) => axiosClient.post("/categories", data),
+  getAll: (params) => axiosClient.get("/categories", { params }),
+  create: (data, config) => axiosClient.post("/categories", data, config),
   update: (id, data) => axiosClient.put(`/categories/${id}`, data),
   remove: (id) => axiosClient.delete(`/categories/${id}`),
 };
 
 // UNITS: id, name, abbreviation
 export const unitsApi = {
-  getAll: (search) => axiosClient.get("/units", { params: { search } }),
+  getAll: (params) => axiosClient.get("/units", { params }),
   create: (data) => axiosClient.post("/units", data),
   update: (id, data) => axiosClient.put(`/units/${id}`, data),
   remove: (id) => axiosClient.delete(`/units/${id}`),
@@ -37,7 +38,7 @@ export const unitsApi = {
 export const productsApi = {
   getAll: (params) => axiosClient.get("/products", { params }),
   getById: (id) => axiosClient.get(`/products/${id}`),
-  create: (data) => axiosClient.post("/products", data),
+  create: (data, config) => axiosClient.post("/products", data, config),
   update: (id, data) => axiosClient.put(`/products/${id}`, data),
   remove: (id) => axiosClient.delete(`/products/${id}`),
 };
@@ -45,7 +46,7 @@ export const productsApi = {
 // SUPPLIERS: id, supplier_code, supplier_name, contact_name, phone,
 // email, address, status
 export const suppliersApi = {
-  getAll: (search) => axiosClient.get("/suppliers", { params: { search } }),
+  getAll: (params) => axiosClient.get("/suppliers", { params }),
   getById: (id) => axiosClient.get(`/suppliers/${id}`),
   create: (data) => axiosClient.post("/suppliers", data),
   update: (id, data) => axiosClient.put(`/suppliers/${id}`, data),
@@ -63,7 +64,7 @@ export const stockApi = {
     // data: { supplier_id, transaction_date, reference_number, items: [
     //   { product_id, batch_number, manufacture_date, expiry_date, quantity, unit_price }
     // ] }
-    create: (data) => axiosClient.post("/stock/in", data),
+    create: (data, config) => axiosClient.post("/stock/in", data, config),
     remove: (id) => axiosClient.delete(`/stock/in/${id}`),
   },
   stockOut: {
@@ -71,7 +72,7 @@ export const stockApi = {
     // data: { reason, reference_number, transaction_date, items: [
     //   { product_id, batch_id, quantity }
     // ] }
-    create: (data) => axiosClient.post("/stock/out", data),
+    create: (data, config) => axiosClient.post("/stock/out", data, config),
     remove: (id) => axiosClient.delete(`/stock/out/${id}`),
   },
   // Aggregated available_quantity per product, from PRODUCT_BATCHES
@@ -87,8 +88,8 @@ export const expiryApi = {
 };
 
 export const reportsApi = {
-  generate: (params) => axiosClient.get("/reports/generate", { params }),
-  getAll: () => axiosClient.get("/reports"),
+  generate: (params, config = {}) => axiosClient.get("/reports/generate", { ...config, params }),
+  getAll: (params) => axiosClient.get("/reports", { params }),
   getById: (id) => axiosClient.get(`/reports/${id}`),
   save: (data) => axiosClient.post("/reports", data),
 };
@@ -108,7 +109,7 @@ export const permissionsApi = {
 };
 
 export const usersApi = {
-  getAll: (search) => axiosClient.get("/users", { params: { search } }),
+  getAll: (params) => axiosClient.get("/users", { params }),
   getById: (id) => axiosClient.get(`/users/${id}`),
   create: (data) => axiosClient.post("/users", data),
   update: (id, data) => axiosClient.put(`/users/${id}`, data),

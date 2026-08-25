@@ -459,6 +459,8 @@ SELECT
 FROM product_batches pb
 JOIN products p ON p.id = pb.product_id
 WHERE pb.expiry_date IS NOT NULL
+  AND p.status = 'active'
+  AND pb.status = 'active'
   AND pb.expiry_date >= CURDATE()
   AND pb.expiry_date <= DATE_ADD(CURDATE(), INTERVAL 30 DAY)
   AND pb.available_quantity > 0
@@ -476,6 +478,9 @@ SELECT
 FROM product_batches pb
 JOIN products p ON p.id = pb.product_id
 WHERE pb.expiry_date IS NOT NULL
+  AND p.status = 'active'
+  AND pb.status = 'active'
+  AND pb.available_quantity > 0
   AND pb.expiry_date < CURDATE()
 ORDER BY pb.expiry_date DESC;
 

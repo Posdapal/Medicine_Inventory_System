@@ -3,8 +3,8 @@
 // movement_quantity, quantity_after, tied to a product and batch.
 import { useEffect, useState } from "react";
 import { stockApi } from "../../api/endpoints";
-import { PageHeader, Badge, Table, Toolbar, ExportGroup } from "../../components/ui/Common";
-import { downloadCsv, printTable } from "../../utils/ExportUtils";
+import { PageHeader, Badge, Table, Toolbar, ExportGroup, Pagination } from "../../components/ui/Common";
+import { downloadExcel, printTable } from "../../utils/ExportUtils";
 
 const HEADERS = ["Product", "Batch No.", "Movement Type", "Qty Before", "Movement Qty", "Qty After", "Date"];
 
@@ -19,13 +19,14 @@ function StockHistory() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, total_pages: 1 });
 
-  const loadRows = async (search) => {
+  const loadRows = async (search, page = pagination.page, limit = pagination.limit) => {
     setLoading(true);
     setError("");
     try {
-      const { data } = await stockApi.history({ search });
-      setRows(data);
+      const { data } = await stockApi.history({ search, page, limit });
+      setRows(data.items); setPagination(data.pagination);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -34,15 +35,16 @@ function StockHistory() {
   };
 
   useEffect(() => {
-    const timeout = setTimeout(() => loadRows(query || undefined), 300);
+    const timeout = setTimeout(() => loadRows(query || undefined, pagination.page, pagination.limit), 300);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query]);
+  }, [query, pagination.page, pagination.limit]);
+  useEffect(() => { setPagination((current) => ({ ...current, page: 1 })); }, [query]);
 
   const tableRows = () =>
     rows.map((r) => [r.product, r.batch_number || "—", r.movement_type, r.quantity_before, r.movement_quantity, r.quantity_after, r.date]);
 
-  const handleExportExcel = () => downloadCsv("stock-history.csv", HEADERS, tableRows());
+  const handleExportExcel = () => downloadExcel("stock-history.xlsx", "Stock History", HEADERS, tableRows(), (pagination.page - 1) * pagination.limit);
   const handleExportPdf = () => printTable("Stock History Report", HEADERS, tableRows());
   const handlePrint = () => printTable("Stock History Report", HEADERS, tableRows());
 
@@ -61,7 +63,7 @@ function StockHistory() {
       {loading ? (
         <p className="text-sm text-[#8B96AE]">Loading stock history...</p>
       ) : (
-        <Table
+        <><Table
           columns={[
             { key: "product", label: "Product" },
             { key: "batch_number", label: "Batch No.", render: (r) => r.batch_number || "—" },
@@ -72,7 +74,9 @@ function StockHistory() {
             { key: "date", label: "Date" },
           ]}
           rows={rows}
+          rowOffset={(pagination.page - 1) * pagination.limit}
         />
+        <Pagination page={pagination.page} totalPages={pagination.total_pages} total={pagination.total} limit={pagination.limit} onPageChange={(page) => setPagination((current) => ({ ...current, page }))} onLimitChange={(limit) => setPagination((current) => ({ ...current, page: 1, limit }))} /></>
       )}
     </div>
   );

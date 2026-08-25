@@ -1,16 +1,17 @@
 const bcrypt = require('bcryptjs');
-const { query, ok, fail, asyncHandler } = require('../utils/helper');
+const { query, queryPage, ok, fail, asyncHandler } = require('../utils/helper');
 
 // GET /api/users?search=
 const getAll = asyncHandler(async (req, res) => {
   const search = req.query.search ? `%${req.query.search}%` : '%';
-  const rows = await query(
+  const statusFilter = req.query.status ? ' AND u.status = ?' : '';
+  const params = req.query.status ? [search, req.query.status] : [search];
+  const rows = await queryPage(req,
     `SELECT u.id, u.full_name, u.username, u.email, r.name AS role, u.status, u.created_at
      FROM users u
      JOIN roles r ON r.id = u.role_id
-     WHERE u.full_name LIKE ?
-     ORDER BY u.full_name`,
-    [search]
+     WHERE u.full_name LIKE ?${statusFilter}`,
+    params, 'ORDER BY u.full_name'
   );
   return ok(res, rows);
 });

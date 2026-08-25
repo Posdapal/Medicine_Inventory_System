@@ -1,8 +1,9 @@
+/* eslint-disable no-empty -- mutation errors are displayed by the global API interceptor */
 import { useEffect, useState } from "react";
 import { Search, Plus, Trash2, X, Edit2, Save } from "lucide-react";
 import { suppliersApi } from "../../api/endpoints";
 import Swal from 'sweetalert2';
-import { PageHeader } from "../../components/ui/Common";
+import { PageHeader, FormInput, FormSelect, Pagination, Table } from "../../components/ui/Common";
 
 function Toolbar({ query, setQuery, placeholder, onAdd, addLabel }) {
   return (
@@ -24,40 +25,6 @@ function Toolbar({ query, setQuery, placeholder, onAdd, addLabel }) {
           <Plus size={15} /> {addLabel}
         </button>
       )}
-    </div>
-  );
-}
-
-function Table({ columns, rows }) {
-  return (
-    <div className="overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-[#1E2A45] text-left text-[#8B96AE] text-xs uppercase tracking-wide">
-              {columns.map((c) => (
-                <th key={c.key} className="px-4 py-3 font-medium">{c.label}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, i) => (
-              <tr key={row.id ?? i} className="border-b border-[#1E2A45] last:border-0 hover:bg-white/[0.02] transition-colors">
-                {columns.map((c) => (
-                  <td key={c.key} className="px-4 py-3 text-[#D7DEEB]">{c.render ? c.render(row) : row[c.key]}</td>
-                ))}
-              </tr>
-            ))}
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={columns.length} className="px-4 py-10 text-center text-[#5D6B85] text-sm">
-                  No records match your search.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
     </div>
   );
 }
@@ -103,8 +70,8 @@ function FormModal({ isOpen, onClose, title, subtitle, children, footer }) {
 function mapSupplierFromApi(s) {
   return {
     id: s.id,
-    code: s.supplier_code || "",
-    name: s.supplier_name || "",
+    code: s.supplier_code,
+    name: s.supplier_name,
     contact: s.contact_name || "",
     phone: s.phone || "",
     email: s.email || "",
@@ -115,78 +82,21 @@ function mapSupplierFromApi(s) {
 
 function mapSupplierToApi(form) {
   return {
-    supplier_code: form.code,
-    supplier_name: form.name,
-    contact_name: form.contact || null,
-    phone: form.phone || null,
-    email: form.email || null,
-    address: form.address || null,
+    supplier_code: form.code.trim(),
+    supplier_name: form.name.trim(),
+    contact_name: form.contact.trim() || null,
+    phone: form.phone.trim() || null,
+    email: form.email.trim().toLowerCase() || null,
+    address: form.address.trim() || null,
     status: form.status,
   };
 }
 
-// Basic phone validation: digits, spaces, +, -, (), 7-20 chars
-const PHONE_REGEX = /^[+]?[\d\s()-]{7,20}$/;
-
-function validateSupplierForm(formData) {
-  const errors = {};
-
-  const code = (formData.code || "").trim();
-  if (!code) {
-    errors.code = "Supplier code is required.";
-  }
-
-  const name = (formData.name || "").trim();
-  if (!name) {
-    errors.name = "Supplier name is required.";
-  } else if (name.length < 2) {
-    errors.name = "Supplier name must be at least 2 characters.";
-  }
-
-  const contact = (formData.contact || "").trim();
-  if (!contact) {
-    errors.contact = "Contact person is required.";
-  } else if (contact.length < 2) {
-    errors.contact = "Contact person must be at least 2 characters.";
-  }
-
-  const email = (formData.email || "").trim();
-  if (!email) {
-    errors.email = "Email person is required.";
-  } else if (email.length < 2) {
-    errors.email = "Email person must be at least 2 characters.";
-  }
-
-  const address = (formData.address || "").trim();
-  if (!address) {
-    errors.address = "Address person is required.";
-  } else if (address.length < 2) {
-    errors.address = "Address person must be at least 2 characters.";
-  }
-
-  const phone = (formData.phone || "").trim();
-  if (!phone) {
-    errors.phone = "Phone number is required.";
-  } else if (!PHONE_REGEX.test(phone)) {
-    errors.phone = "Enter a valid phone number.";
-  }
-
-  return errors;
-}
-
-function FieldError({ message }) {
-  if (!message) return null;
-  return <p className="mt-1 text-xs text-rose-400">{message}</p>;
-}
-
-// Label styled to match the reference template: bold text + red required asterisk.
-function FieldLabel({ children, required }) {
-  return (
-    <label className="block text-sm font-semibold text-[#E7ECF6] mb-1.5">
-      {children} {required && <span className="text-rose-500">*</span>}
-    </label>
-  );
-}
+// function SupplierForm({ initialData, onSubmit, onClose, submitting }) {
+//   const [formData, setFormData] = useState(
+//     initialData || { code: "", name: "", contact: "", phone: "", email: "", address: "", status: "" }
+//   );
+// }
 
 function SupplierForm({ initialData, onSubmit, onClose, submitting, formId }) {
   const [formData, setFormData] = useState(
@@ -213,15 +123,15 @@ function SupplierForm({ initialData, onSubmit, onClose, submitting, formId }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const nextErrors = validateSupplierForm(formData);
-    setErrors(nextErrors);
-    setTouched({ code: true, name: true, contact: true, phone: true, email: true, address: true });
-
-    if (Object.keys(nextErrors).length > 0) {
-      return;
-    }
-
-    onSubmit(formData);
+    onSubmit({
+      ...formData,
+      code: formData.code.trim(),
+      name: formData.name.trim(),
+      contact: formData.contact.trim(),
+      phone: formData.phone.trim(),
+      email: formData.email.trim(),
+      address: formData.address.trim(),
+    });
   };
 
   const inputClass = (field) =>
@@ -231,122 +141,47 @@ function SupplierForm({ initialData, onSubmit, onClose, submitting, formId }) {
     }`;
 
   return (
-    <form id={formId} onSubmit={handleSubmit} noValidate className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
-        <div>
-          <FieldLabel required>Supplier Code</FieldLabel>
-          <input
-            type="text"
-            value={formData.code}
-            onChange={handleChange("code")}
-            onBlur={handleBlur("code")}
-            className={inputClass("code")}
-            aria-invalid={!!errors.code}
-          />
-          <FieldError message={errors.code} />
-        </div>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <FormInput label="Supplier Code" required type="text" minLength={2} maxLength={30} pattern="[A-Za-z0-9_-]+" title="Use letters, numbers, hyphens, or underscores only." placeholder="e.g. SUP-1001" value={formData.code} onChange={(e) => setFormData({ ...formData, code: e.target.value })} />
+      <FormInput label="Supplier Name" required type="text" minLength={2} maxLength={100} placeholder="e.g. MedSupply Co." value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
 
-        <div>
-          <FieldLabel required>Supplier Name</FieldLabel>
-          <input
-            type="text"
-            value={formData.name}
-            onChange={handleChange("name")}
-            onBlur={handleBlur("name")}
-            className={inputClass("name")}
-            aria-invalid={!!errors.name}
-          />
-          <FieldError message={errors.name} />
-        </div>
+      <FormInput label="Contact Person" type="text" maxLength={100} placeholder="e.g. Jane Smith" value={formData.contact} onChange={(e) => setFormData({ ...formData, contact: e.target.value })} />
 
-        <div>
-          <FieldLabel required>Contact Person</FieldLabel>
-          <input
-            type="text"
-            value={formData.contact}
-            onChange={handleChange("contact")}
-            onBlur={handleBlur("contact")}
-            className={inputClass("contact")}
-            aria-invalid={!!errors.contact}
-          />
-          <FieldError message={errors.contact} />
-        </div>
+      <FormInput label="Phone Number" type="tel" inputMode="tel" maxLength={30} pattern="[+0-9() .-]{7,30}" title="Enter a valid phone number using digits and common phone symbols." placeholder="e.g. +66 81 234 5678" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
 
-        <div>
-          <FieldLabel required>Phone Number</FieldLabel>
-          <input
-            type="text"
-            value={formData.phone}
-            onChange={handleChange("phone")}
-            onBlur={handleBlur("phone")}
-            className={inputClass("phone")}
-            aria-invalid={!!errors.phone}
-          />
-          <FieldError message={errors.phone} />
-        </div>
+      <FormInput label="Email Address" type="email" maxLength={120} placeholder="e.g. orders@medsupply.com" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
 
-        <div>
-          <FieldLabel>Email</FieldLabel>
-          <input
-            type="text"
-            value={formData.email}
-            onChange={handleChange("email")}
-            onBlur={handleBlur("email")}
-            className={inputClass("email")}
-            aria-invalid={!!errors.email}
-          />
-          <FieldError message={errors.email} />
-        </div>
+      <FormInput label="Address" type="text" maxLength={255} placeholder="e.g. 123 Health Street, Bangkok" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} />
 
-        <div>
-          <FieldLabel required>Status</FieldLabel>
-          <select
-            value={formData.status}
-            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-            className="w-full bg-[#070B12] border border-[#1E2A45] rounded-lg px-3 py-2.5 text-sm text-[#E7ECF6] focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-          >
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
-        </div>
+      <FormSelect label="Status" required placeholder="Select a status"
+          value={formData.status}
+          onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+        >
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+      </FormSelect>
 
-        <div className="sm:col-span-2">
-          <FieldLabel required>Address</FieldLabel>
-          <textarea
-            rows={3}
-            value={formData.address}
-            onChange={handleChange("address")}
-            onBlur={handleBlur("address")}
-            className={`${inputClass("address")} resize-y`}
-            aria-invalid={!!errors.address}
-          />
-          <FieldError message={errors.address} />
-        </div>
+      <div className="flex justify-end gap-3 pt-2">
+        <button
+          type="button"
+          onClick={onClose}
+          className="px-4 py-2 border border-[#1E2A45] text-[#8B96AE] hover:text-[#E7ECF6] hover:bg-white/[0.02] text-sm font-medium rounded-lg transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={submitting}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors"
+        >
+          {submitting ? "Saving..." : "Save Vendor"}
+        </button>
       </div>
-
-      {!formId && (
-        <div className="flex justify-end gap-3 pt-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 border border-[#1E2A45] text-[#8B96AE] hover:text-[#E7ECF6] hover:bg-white/[0.02] text-sm font-medium rounded-lg transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors"
-          >
-            {submitting ? "Saving..." : "Save"}
-          </button>
-        </div>
-      )}
     </form>
   );
 }
 
-function Suppliers() {
+function Suppliers({ navigationFilters = {} }) {
   const [suppliersList, setSuppliersList] = useState([]);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -355,13 +190,15 @@ function Suppliers() {
 
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState(null);
+  const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, total_pages: 1 });
 
-  const loadSuppliers = async (search) => {
+  const loadSuppliers = async (search, page = pagination.page, limit = pagination.limit) => {
     setLoading(true);
     setError("");
     try {
-      const { data } = await suppliersApi.getAll(search);
-      setSuppliersList(data.map(mapSupplierFromApi));
+      const { data } = await suppliersApi.getAll({ search, page, limit, status: navigationFilters.status });
+      setSuppliersList(data.items.map(mapSupplierFromApi));
+      setPagination(data.pagination);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -370,10 +207,12 @@ function Suppliers() {
   };
 
   useEffect(() => {
-    const timeout = setTimeout(() => loadSuppliers(query || undefined), 300);
+    const timeout = setTimeout(() => loadSuppliers(query || undefined, pagination.page, pagination.limit), 300);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query]);
+  }, [query, pagination.page, pagination.limit, navigationFilters.status]);
+
+  useEffect(() => { setPagination((current) => ({ ...current, page: 1 })); }, [query]);
 
   const handleAddSupplier = async (formData) => {
     setSubmitting(true);
@@ -381,9 +220,7 @@ function Suppliers() {
       await suppliersApi.create(mapSupplierToApi(formData));
       setIsAddOpen(false);
       await loadSuppliers(query || undefined);
-    } catch (err) {
-      console.error("Create supplier failed:", err);
-      alert(err.response?.data?.message || err.message || "Failed to create supplier.");
+    } catch {
     } finally {
       setSubmitting(false);
     }
@@ -395,9 +232,7 @@ function Suppliers() {
       await suppliersApi.update(editingSupplier.id, mapSupplierToApi(formData));
       setEditingSupplier(null);
       await loadSuppliers(query || undefined);
-    } catch (err) {
-      console.error("Update supplier failed:", err);
-      alert(err.response?.data?.message || err.message || "Failed to update supplier.");
+    } catch {
     } finally {
       setSubmitting(false);
     }
@@ -437,9 +272,7 @@ function Suppliers() {
       await suppliersApi.remove(id);
       await loadSuppliers(query || undefined);
 
-      Swal.fire("Deleted!", "Supplier has been deleted.", "success");
-    } catch (err) {
-      Swal.fire("Error!", "An error occurred while deleting the supplier.", "error");
+    } catch {
     }
   };
 
@@ -457,6 +290,7 @@ function Suppliers() {
       {loading ? (
         <p className="text-sm text-[#8B96AE]">Loading suppliers...</p>
       ) : (
+        <>
         <Table
           columns={[
             { key: "code", label: "Supplier Code" },
@@ -482,7 +316,10 @@ function Suppliers() {
             },
           ]}
           rows={suppliersList}
+          rowOffset={(pagination.page - 1) * pagination.limit}
         />
+        <Pagination page={pagination.page} totalPages={pagination.total_pages} total={pagination.total} limit={pagination.limit} onPageChange={(page) => setPagination((current) => ({ ...current, page }))} onLimitChange={(limit) => setPagination((current) => ({ ...current, page: 1, limit }))} />
+        </>
       )}
 
       <FormModal

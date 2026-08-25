@@ -1,7 +1,9 @@
+/* eslint-disable no-empty -- mutation errors are displayed by the global API interceptor */
+// Units.jsx — Products > Units
 import React, { useEffect, useState } from "react";
 import { Trash2, Edit2, Plus, ChevronRight } from "lucide-react";
 import { unitsApi } from "../../api/endpoints";
-import { Table, Toolbar, Modal, FormField, inputClass } from "../../components/ui/Common";
+import { Table, Toolbar, Modal, FormInput, Pagination } from "../../components/ui/Common";
 import Swal from 'sweetalert2';
 
 function validateUnitForm(form) {
@@ -51,46 +53,16 @@ function UnitForm({ initialData, onSubmit, onClose, submitting }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const nextErrors = validateUnitForm(form);
-    setErrors(nextErrors);
-    setTouched({ name: true, abbreviation: true });
-
-    if (Object.keys(nextErrors).length > 0) {
-      return;
-    }
-
-    onSubmit(form);
+    onSubmit({ ...form, name: form.name.trim(), abbreviation: form.abbreviation.trim() });
   };
 
   const fieldClass = (field) =>
     `${inputClass} ${errors[field] ? "border-rose-500/60 focus:ring-rose-500/40" : ""}`;
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="space-y-4">
-      <FormField label="Unit Name">
-        <input
-          type="text"
-          placeholder="e.g. Box, Bottle, Piece"
-          value={form.name}
-          onChange={handleChange("name")}
-          onBlur={handleBlur("name")}
-          className={fieldClass("name")}
-          aria-invalid={!!errors.name}
-        />
-        <FieldError message={errors.name} />
-      </FormField>
-      <FormField label="Abbreviation">
-        <input
-          type="text"
-          placeholder="e.g. box, btl, pc"
-          value={form.abbreviation}
-          onChange={handleChange("abbreviation")}
-          onBlur={handleBlur("abbreviation")}
-          className={fieldClass("abbreviation")}
-          aria-invalid={!!errors.abbreviation}
-        />
-        <FieldError message={errors.abbreviation} />
-      </FormField>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <FormInput label="Unit Name" required type="text" minLength={2} maxLength={50} placeholder="e.g. Box, Bottle, Piece" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+      <FormInput label="Abbreviation" type="text" maxLength={10} pattern="[A-Za-z0-9.-]*" title="Use letters, numbers, periods, or hyphens only." placeholder="e.g. box, btl, pc" value={form.abbreviation} onChange={(e) => setForm({ ...form, abbreviation: e.target.value })} />
       <div className="flex justify-end gap-3 pt-2">
         <button type="button" onClick={onClose} className="px-4 py-2 border border-[#1E2A45] text-[#8B96AE] hover:text-[#E7ECF6] hover:bg-white/[0.02] text-sm font-medium rounded-lg transition-colors">
           Cancel
@@ -111,13 +83,15 @@ function Units() {
   const [submitting, setSubmitting] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingUnit, setEditingUnit] = useState(null);
+  const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, total_pages: 1 });
 
-  const loadUnits = async (search) => {
+  const loadUnits = async (search, page = pagination.page, limit = pagination.limit) => {
     setLoading(true);
     setError("");
     try {
-      const { data } = await unitsApi.getAll(search);
-      setRows(data);
+      const { data } = await unitsApi.getAll({ search, page, limit });
+      setRows(data.items);
+      setPagination(data.pagination);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -126,10 +100,12 @@ function Units() {
   };
 
   useEffect(() => {
-    const timeout = setTimeout(() => loadUnits(query || undefined), 300);
+    const timeout = setTimeout(() => loadUnits(query || undefined, pagination.page, pagination.limit), 300);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query]);
+  }, [query, pagination.page, pagination.limit]);
+
+  useEffect(() => { setPagination((current) => ({ ...current, page: 1 })); }, [query]);
 
   const handleAdd = async (form) => {
     setSubmitting(true);
@@ -137,9 +113,7 @@ function Units() {
       await unitsApi.create(form);
       setIsAddOpen(false);
       await loadUnits(query || undefined);
-    } catch (err) {
-      console.error("Create unit failed:", err);
-      alert(err.response?.data?.message || err.message || "Failed to create unit.");
+    } catch {
     } finally {
       setSubmitting(false);
     }
@@ -151,9 +125,7 @@ function Units() {
       await unitsApi.update(editingUnit.id, form);
       setEditingUnit(null);
       await loadUnits(query || undefined);
-    } catch (err) {
-      console.error("Update unit failed:", err);
-      alert(err.response?.data?.message || err.message || "Failed to update unit.");
+    } catch {
     } finally {
       setSubmitting(false);
     }
@@ -193,9 +165,7 @@ function Units() {
       await unitsApi.remove(id);
       await loadUnits(query || undefined);
 
-      Swal.fire("Deleted!", "Unit has been deleted.", "success");
-    } catch (err) {
-      Swal.fire("Error!", "An error occurred while deleting the unit.", "error");
+    } catch {
     }
   };
 
@@ -232,6 +202,7 @@ function Units() {
             {loading ? (
               <p className="px-4 py-10 text-center text-sm text-[#8B96AE]">Loading units...</p>
             ) : (
+              <>
               <Table
                 columns={[
                   { key: "name", label: "Name" },
@@ -252,7 +223,10 @@ function Units() {
                   },
                 ]}
                 rows={rows}
+                rowOffset={(pagination.page - 1) * pagination.limit}
               />
+              <Pagination page={pagination.page} totalPages={pagination.total_pages} total={pagination.total} limit={pagination.limit} onPageChange={(page) => setPagination((current) => ({ ...current, page }))} onLimitChange={(limit) => setPagination((current) => ({ ...current, page: 1, limit }))} />
+              </>
             )}
           </div>
         </div>
