@@ -296,6 +296,24 @@ function parentGroupOf(pageKey) {
   return group?.key;
 }
 
+function findPageByKey(pageKey) {
+  for (const item of NAV) {
+    if (item.key === pageKey) {
+      return item;
+    }
+
+    const child = item.children?.find(
+      (candidate) => candidate.key === pageKey
+    );
+
+    if (child) {
+      return child;
+    }
+  }
+
+  return null;
+}
+
 // =====================================================
 // DASHBOARD SHELL
 // =====================================================
@@ -400,6 +418,11 @@ function DashboardShell() {
     groupKey,
     filters = {}
   ) => {
+    const target =
+      typeof item === "string"
+        ? findPageByKey(item)
+        : item;
+
     setNavigationFilters(filters);
 
     // -------------------------------------------------
@@ -420,8 +443,8 @@ function DashboardShell() {
     // Navigate
     // -------------------------------------------------
 
-    if (item?.path) {
-      navigate(item.path);
+    if (target?.path) {
+      navigate(target.path);
     }
   };
 
