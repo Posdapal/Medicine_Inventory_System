@@ -8,11 +8,11 @@ import {
   PageHeader, Badge, Table, Toolbar, Modal, FormInput, FormSelect,
   ImportButton, ActionButton, Pagination,
 } from "../../components/ui/Common";
-import { downloadExcel, downloadTemplate, parseCsvFile } from "../../utils/ExportUtils";
+import { downloadExcel, parseCsvFile, downloadXlsx, downloadXlsxTemplate, parseImportFile } from "../../utils/ExportUtils";
 import Swal from "sweetalert2";
 import { toast } from "../../utils/toast";
 
-const CSV_HEADERS = ["name", "description", "status"];
+const CSV_HEADERS = ["Name", "Description", "Status"];
 
 function validateCategoryForm(form) {
   const errors = {};
@@ -165,12 +165,16 @@ function Categories({ navigationFilters = {} }) {
   };
 
   const handleExport = () => {
-    downloadExcel("categories.xlsx", "Categories", ["Name", "Description", "Status"], rows.map((r) => [r.name, r.description, r.status]), (pagination.page - 1) * pagination.limit);
+    downloadXlsx(
+      "categories.xlsx",
+      CSV_HEADERS,
+      rows.map((r) => [r.name, r.description, r.status])
+    )
   };
 
   const handleImport = async (file) => {
     try {
-      const records = await parseCsvFile(file);
+      const records = await parseImportFile(file);
       setSubmitting(true);
       for (const r of records) {
         await categoriesApi.create({ name: r.name, description: r.description, status: r.status || "active" }, { skipToast: true });
@@ -196,6 +200,7 @@ function Categories({ navigationFilters = {} }) {
           <>
             <ImportButton label="Import Categories" onImport={handleImport} />
             <ActionButton icon={Download} label="Export Categories" onClick={handleExport} />
+            <ActionButton icon={Download} label="Download Template" onClick={() => downloadXlsxTemplate("category-template.xlsx", CSV_HEADERS)}/>
           </>
         }
       />

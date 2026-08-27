@@ -63,7 +63,7 @@ export default function Login() {
             <div className="space-y-5">
               <label className="block">
                 <span className={`mb-2 block text-sm font-medium ${validationErrors.username ? "text-red-500" : "text-slate-300"}`}>
-                  Username<span aria-hidden="true">*</span>
+                  Email<span aria-hidden="true">*</span>
                 </span>
                 <span className="relative block">
                   <Mail size={17} className={`absolute left-3.5 top-1/2 -translate-y-1/2 ${validationErrors.username ? "text-red-500" : "text-slate-500"}`} />
@@ -77,7 +77,7 @@ export default function Login() {
                         setValidationErrors((current) => ({ ...current, username: undefined }));
                       }
                     }}
-                    placeholder="Enter your username"
+                    placeholder="Enter your email"
                     aria-invalid={Boolean(validationErrors.username)}
                     aria-describedby={validationErrors.username ? "username-error" : undefined}
                     className={`min-h-12 w-full rounded-xl border bg-slate-950/60 py-3 pl-11 pr-4 text-sm outline-none transition placeholder:text-slate-600 ${validationErrors.username ? "border-red-500 focus:border-red-500 focus:ring-4 focus:ring-red-500/15" : "border-slate-600 focus:border-teal-400/70 focus:ring-4 focus:ring-teal-400/10"}`}

@@ -6,6 +6,16 @@
 // browser's print dialog (which offers "Save as PDF").
 
 import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
+
+
+function normalizeHeader(header) {
+  return String(header || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
 
 function toCsvValue(value) {
   const str = value === null || value === undefined ? "" : String(value);
@@ -81,6 +91,56 @@ export function parseCsvFile(file) {
     };
     reader.onerror = () => reject(reader.error);
     reader.readAsText(file);
+  });
+}
+
+export function parseXlsxFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(reader.result);
+        const sheet = workbook.worksheets[0];
+        if (!sheet) return resolve([]);
+
+        const headerRow = sheet.getRow(1);
+        const headers = [];
+        headerRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+          headers[colNumber - 1] = normalizeHeader(cell.value);
+        });
+
+        const records = [];
+        sheet.eachRow((row, rowNumber) => {
+          if (rowNumber === 1) return; // skip header
+          const values = row.values; // 1-indexed, values[0] is empty
+          // Skip fully blank rows
+          const isBlank = headers.every((_, i) => {
+            const v = values[i + 1];
+            return v === undefined || v === null || String(v).trim() === "";
+          });
+          if (isBlank) return;
+
+          const record = {};
+          headers.forEach((h, i) => {
+            const cellValue = values[i + 1];
+            // ExcelJS can return rich objects for formulas/hyperlinks; coerce to plain value
+            const plain =
+              cellValue && typeof cellValue === "object" && "result" in cellValue
+                ? cellValue.result
+                : cellValue;
+            record[h] = plain === undefined || plain === null ? "" : String(plain).trim();
+          });
+          records.push(record);
+        });
+
+        resolve(records);
+      } catch (err) {
+        reject(err);
+      }
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsArrayBuffer(file);
   });
 }
 
@@ -163,4 +223,12 @@ export async function downloadXlsx(filename, headers, rows, sheetName = "Sheet1"
 
 export function downloadXlsxTemplate(filename, headers) {
   return downloadXlsx(filename, headers, []);
+}
+
+export function parseImportFile(file) {
+  const name = file.name || "";
+  if (/\.xlsx?$/i.test(name)) {
+    return parseXlsxFile(file);
+  }
+  return parseCsvFile(file);
 }

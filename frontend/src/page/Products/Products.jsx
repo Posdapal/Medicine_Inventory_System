@@ -11,7 +11,7 @@ import {
   PageHeader, Badge, Table, Toolbar, Modal, FormField, FormInput, FormSelect, inputClass,
   ImportButton, ActionButton, Pagination,
 } from "../../components/ui/Common";
-import { downloadExcel, downloadTemplate, parseCsvFile } from "../../utils/ExportUtils";
+import { parseCsvFile, downloadXlsx, downloadXlsxTemplate, parseImportFile } from "../../utils/ExportUtils";
 import Swal from 'sweetalert2';
 import { toast } from "../../utils/toast";
 
@@ -122,16 +122,16 @@ function ProductForm({ initialData, onSubmit, onClose, categories, units, submit
 
       <div className="grid grid-cols-2 gap-4">
         <FormSelect label="Category" required placeholder="Select a category" value={formData.category_id} onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}>
-            {categories.map((c) => <option key={c.id} value={String(c.id)}>{c.name}</option>)}
+          {categories.map((c) => <option key={c.id} value={String(c.id)}>{c.name}</option>)}
         </FormSelect>
         <FormSelect label="Unit" required placeholder="Select a unit" value={formData.unit_id} onChange={(e) => setFormData({ ...formData, unit_id: e.target.value })}>
-            {units.map((u) => <option key={u.id} value={String(u.id)}>{u.name}</option>)}
+          {units.map((u) => <option key={u.id} value={String(u.id)}>{u.name}</option>)}
         </FormSelect>
       </div>
 
       <FormSelect label="Status" required placeholder="Select a status" value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })}>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
       </FormSelect>
 
       <div className="flex justify-end gap-3 pt-2">
@@ -225,7 +225,7 @@ function Products({ navigationFilters = {} }) {
   };
 
   const handleDeleteProduct = async (id) => {
- const result = await Swal.fire({
+    const result = await Swal.fire({
       title: "Are you sure?",
       text: "You want to delete this record!",
       background: "#0B1220",
@@ -263,18 +263,16 @@ function Products({ navigationFilters = {} }) {
   };
 
   const handleExportProducts = () => {
-    downloadExcel(
+    downloadXlsx(
       "products.xlsx",
-      "Products",
-      ["Code", "Product Name", "Generic Name", "Category", "Unit", "Stock", "Min Stock", "Status"],
-      productsList.map((p) => [p.product_code, p.product_name, p.generic_name, p.category, p.unit, p.available_quantity, p.minimum_stock, formatStatus(p.status)]),
-      (pagination.page - 1) * pagination.limit
+      CSV_HEADERS,
+      productsList.map((p) => [p.product_code, p.product_name, p.generic_name, p.category, p.unit, p.minimum_stock, p.status])
     );
   };
 
   const handleImportProducts = async (file) => {
     try {
-      const records = await parseCsvFile(file);
+      const records = await parseImportFile(file);
       setSubmitting(true);
       for (const r of records) {
         await productsApi.create(
@@ -325,42 +323,42 @@ function Products({ navigationFilters = {} }) {
         <p className="text-sm text-[#8B96AE]">Loading products...</p>
       ) : (
         <>
-        <Table
-          columns={[
-            { key: "product_code", label: "Code" },
-            { key: "product_name", label: "Product Name" },
-            { key: "generic_name", label: "Generic Name", render: (r) => r.generic_name || "—" },
-            { key: "category", label: "Category", render: (r) => <Badge>{r.category}</Badge> },
-            { key: "unit", label: "Unit" },
-            { key: "available_quantity", label: "Stock", render: (r) => <Badge tone={stockTone(r.available_quantity, r.minimum_stock)}>{r.available_quantity} {r.unit}</Badge> },
-            { key: "minimum_stock", label: "Min Stock" },
-            { key: "status", label: "Status", render: (r) => <Badge tone={r.status === "active" ? "good" : "neutral"}>{formatStatus(r.status)}</Badge> },
-            {
-              key: "actions",
-              label: "Actions",
-              render: (r) => (
-                <div className="flex items-center gap-3">
-                  <button onClick={() => setEditingProduct(r)} className="text-[#5D6B85] hover:text-blue-400 transition-colors" title="Edit Product">
-                    <Edit2 size={15} />
-                  </button>
-                  <button onClick={() => handleDeleteProduct(r.id)} className="text-[#5D6B85] hover:text-rose-400 transition-colors" title="Delete Product">
-                    <Trash2 size={15} />
-                  </button>
-                </div>
-              ),
-            },
-          ]}
-          rows={productsList}
-          rowOffset={(pagination.page - 1) * pagination.limit}
-        />
-        <Pagination
-          page={pagination.page}
-          totalPages={pagination.total_pages}
-          total={pagination.total}
-          limit={pagination.limit}
-          onPageChange={(page) => setPagination((current) => ({ ...current, page }))}
-          onLimitChange={(limit) => setPagination((current) => ({ ...current, page: 1, limit }))}
-        />
+          <Table
+            columns={[
+              { key: "product_code", label: "Code" },
+              { key: "product_name", label: "Product Name" },
+              { key: "generic_name", label: "Generic Name", render: (r) => r.generic_name || "—" },
+              { key: "category", label: "Category", render: (r) => <Badge>{r.category}</Badge> },
+              { key: "unit", label: "Unit" },
+              { key: "available_quantity", label: "Stock", render: (r) => <Badge tone={stockTone(r.available_quantity, r.minimum_stock)}>{r.available_quantity} {r.unit}</Badge> },
+              { key: "minimum_stock", label: "Min Stock" },
+              { key: "status", label: "Status", render: (r) => <Badge tone={r.status === "active" ? "good" : "neutral"}>{formatStatus(r.status)}</Badge> },
+              {
+                key: "actions",
+                label: "Actions",
+                render: (r) => (
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => setEditingProduct(r)} className="text-[#5D6B85] hover:text-blue-400 transition-colors" title="Edit Product">
+                      <Edit2 size={15} />
+                    </button>
+                    <button onClick={() => handleDeleteProduct(r.id)} className="text-[#5D6B85] hover:text-rose-400 transition-colors" title="Delete Product">
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                ),
+              },
+            ]}
+            rows={productsList}
+            rowOffset={(pagination.page - 1) * pagination.limit}
+          />
+          <Pagination
+            page={pagination.page}
+            totalPages={pagination.total_pages}
+            total={pagination.total}
+            limit={pagination.limit}
+            onPageChange={(page) => setPagination((current) => ({ ...current, page }))}
+            onLimitChange={(limit) => setPagination((current) => ({ ...current, page: 1, limit }))}
+          />
         </>
       )}
 

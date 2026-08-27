@@ -198,7 +198,7 @@ export function ActionButton({ icon: Icon, label, onClick, title }) {
   );
 }
 
-export function ImportButton({ label = "Import", onImport, accept = ".csv" }) {
+export function ImportButton({ label = "Import", onImport, accept = ".csv, .xlsx, .xls" }) {
   return (
     <label
       title={label}

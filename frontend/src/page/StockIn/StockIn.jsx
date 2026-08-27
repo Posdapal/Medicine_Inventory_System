@@ -10,13 +10,13 @@ import {
   PageHeader, Badge, Table, Toolbar, Modal, FormInput, FormSelect, FormDatePicker,
   ImportButton, ActionButton, Pagination,
 } from "../../components/ui/Common";
-import { downloadExcel, parseCsvFile } from "../../utils/ExportUtils";
+import { downloadExcel, parseCsvFile, downloadXlsx, downloadXlsxTemplate, parseImportFile } from "../../utils/ExportUtils";
 import Swal from 'sweetalert2';
 import { toast } from "../../utils/toast";
 
 const CSV_HEADERS = [
-  "product", "supplier", "batch_number", "manufacture_date", "expiry_date",
-  "received_quantity", "purchase_price", "reference_number", "transaction_date",
+  "Product", "Supplier", "Batch Number", "Manufacture Date", "Expiry Date",
+  "Received Quantity", "purchase_price", "reference_number", "transaction_date",
 ];
 
 function StockInForm({ onSubmit, onClose, products, suppliers, submitting }) {
@@ -161,7 +161,7 @@ function StockIn({ navigationFilters = {} }) {
     if (!result.isConfirmed) return;
 
     try {
-      await stockApi.remove(id);
+      await stockApi.stockIn.remove(id);
       await loadRows(query || undefined);
 
     } catch {
@@ -187,7 +187,7 @@ function StockIn({ navigationFilters = {} }) {
 
   const handleImport = async (file) => {
     try {
-      const records = await parseCsvFile(file);
+      const records = await parseImportFile(file);
       setSubmitting(true);
       for (const r of records) {
         await stockApi.stockIn.create({
@@ -223,6 +223,7 @@ function StockIn({ navigationFilters = {} }) {
           <>
             <ImportButton label="Import Stock In" onImport={handleImport} />
             <ActionButton icon={Download} label="Export Stock In" onClick={handleExport} />
+            <ActionButton icon={Download} label="Download Template" onClick={() => downloadXlsxTemplate("stock-in.xlsx", CSV_HEADERS)}/>
           </>
         }
       />
