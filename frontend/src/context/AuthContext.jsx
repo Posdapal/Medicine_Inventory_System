@@ -12,11 +12,18 @@ function readStoredUser() {
   }
 }
 
+function withStoredProfileImage(user) {
+  if (!user) return user;
+  const storedImage = localStorage.getItem(`medicine_inventory_profile_photo_${user.id || "current"}`) || "";
+  return { ...user, profileImage: user.profileImage || storedImage };
+}
+
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(readStoredUser);
+  const [user, setUser] = useState(() => withStoredProfileImage(readStoredUser()));
   const [loading, setLoading] = useState(Boolean(localStorage.getItem(TOKEN_KEY)));
   const [error, setError] = useState("");
   const [sessionMessage, setSessionMessage] = useState("");
+  const [permissions, setPermissions] = useState({});
 
   const storeSession = (data) => {
     localStorage.setItem(TOKEN_KEY, data.token);
@@ -28,6 +35,16 @@ export function AuthProvider({ children }) {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
     setUser(null);
+    setPermissions({});
+  };
+
+  const updateUser = (changes) => {
+    setUser((current) => {
+      if (!current) return current;
+      const updated = { ...current, ...changes };
+      localStorage.setItem(USER_KEY, JSON.stringify(updated));
+      return updated;
+    });
   };
 
   useEffect(() => {
@@ -37,10 +54,12 @@ export function AuthProvider({ children }) {
       return undefined;
     }
 
-    authService.profile()
-      .then(({ data }) => {
-        localStorage.setItem(USER_KEY, JSON.stringify(data));
-        setUser(data);
+    Promise.all([authService.profile(), authService.permissions()])
+      .then(([profileResponse, permissionResponse]) => {
+        const updatedUser = withStoredProfileImage(profileResponse.data);
+        localStorage.setItem(USER_KEY, JSON.stringify(updatedUser));
+        setUser(updatedUser);
+        setPermissions(permissionResponse.data?.permissions || {});
       })
       .catch(() => clearSession())
       .finally(() => setLoading(false));
@@ -64,6 +83,8 @@ export function AuthProvider({ children }) {
     try {
       const { data } = await authService.login(email, password);
       storeSession(data);
+      const permissionResponse = await authService.permissions();
+      setPermissions(permissionResponse.data?.permissions || {});
       return data.user;
     } catch (err) {
       setError(err.message);
@@ -100,8 +121,14 @@ export function AuthProvider({ children }) {
       loading,
       error,
       sessionMessage,
+      permissions,
+      can: (module, action) => {
+        if (String(user?.role).toLowerCase() === "administrator") return true;
+        return Boolean(permissions[module]?.[`can_${action}`]);
+      },
       login,
       changePassword,
+      updateUser,
       logout,
     }}>
       {children}

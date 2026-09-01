@@ -13,6 +13,7 @@ import {
 import { downloadExcel, parseCsvFile } from "../../utils/ExportUtils";
 import Swal from 'sweetalert2';
 import { toast } from "../../utils/toast";
+import { useAuth } from "../../context/AuthContext";
 
 const CSV_HEADERS = [
   "product", "supplier", "batch_number", "manufacture_date", "expiry_date",
@@ -73,6 +74,11 @@ function StockInForm({ onSubmit, onClose, products, suppliers, submitting }) {
 }
 
 function StockIn({ navigationFilters = {} }) {
+  const { can } = useAuth();
+  const canCreate = can("stock_in", "create");
+  const canDelete = can("stock_in", "delete");
+  const canImport = can("stock_in", "import");
+  const canExport = can("stock_in", "export");
   const [query, setQuery] = useState("");
   const [rows, setRows] = useState([]);
   const [products, setProducts] = useState([]);
@@ -213,7 +219,7 @@ function StockIn({ navigationFilters = {} }) {
 
   return (
     <div>
-      <PageHeader title="Stock In" subtitle="Stock Management / Stock In" description={navigationFilters.date === "today" ? "Showing completed stock-in records from today." : "Record and review incoming inventory."} onAdd={() => setIsAddOpen(true)} addLabel="Create Stock In" />
+      <PageHeader title="Stock In" subtitle="Stock Management / Stock In" description={navigationFilters.date === "today" ? "Showing completed stock-in records from today." : "Record and review incoming inventory."} onAdd={canCreate ? () => setIsAddOpen(true) : undefined} addLabel="Create Stock In" />
 
       <Toolbar
         query={query}
@@ -221,8 +227,8 @@ function StockIn({ navigationFilters = {} }) {
         placeholder="Search stock-in records..."
         extra={
           <>
-            <ImportButton label="Import Stock In" onImport={handleImport} />
-            <ActionButton icon={Download} label="Export Stock In" onClick={handleExport} />
+            {canImport && <ImportButton label="Import Stock In" onImport={handleImport} />}
+            {canExport && <ActionButton icon={Download} label="Export Stock In" onClick={handleExport} />}
           </>
         }
       />
@@ -245,9 +251,9 @@ function StockIn({ navigationFilters = {} }) {
               key: "actions",
               label: "Actions",
               render: (r) => (
-                <button onClick={() => handleDelete(r.id)} className="text-[#5D6B85] hover:text-rose-400 transition-colors" title="Delete Record">
+                canDelete ? <button onClick={() => handleDelete(r.id)} className="text-[#5D6B85] hover:text-rose-400 transition-colors" title="Delete Record">
                   <Trash2 size={15} />
-                </button>
+                </button> : null
               ),
             },
           ]}

@@ -4,6 +4,7 @@ import { Search, Plus, Trash2, X, Edit2, Save } from "lucide-react";
 import { suppliersApi } from "../../api/endpoints";
 import Swal from 'sweetalert2';
 import { PageHeader, FormInput, FormSelect, Pagination, Table } from "../../components/ui/Common";
+import { useAuth } from "../../context/AuthContext";
 
 function Toolbar({ query, setQuery, placeholder, onAdd, addLabel }) {
   return (
@@ -182,6 +183,10 @@ function SupplierForm({ initialData, onSubmit, onClose, submitting, formId }) {
 }
 
 function Suppliers({ navigationFilters = {} }) {
+  const { can } = useAuth();
+  const canCreate = can("suppliers", "create");
+  const canUpdate = can("suppliers", "update");
+  const canDelete = can("suppliers", "delete");
   const [suppliersList, setSuppliersList] = useState([]);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -278,7 +283,7 @@ function Suppliers({ navigationFilters = {} }) {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Suppliers" subtitle="Suppliers / Supplier List" description="Manage vendor contacts and supplier status." onAdd={() => setIsAddOpen(true)} addLabel="Add Supplier" />
+      <PageHeader title="Suppliers" subtitle="Suppliers / Supplier List" description="Manage vendor contacts and supplier status." onAdd={canCreate ? () => setIsAddOpen(true) : undefined} addLabel="Add Supplier" />
 
       <Toolbar
         query={query}
@@ -305,12 +310,12 @@ function Suppliers({ navigationFilters = {} }) {
               label: "Actions",
               render: (r) => (
                 <div className="flex items-center gap-3">
-                  <button onClick={() => setEditingSupplier(r)} className="text-[#5D6B85] hover:text-blue-400 transition-colors" title="Edit Supplier">
+                  {canUpdate && <button onClick={() => setEditingSupplier(r)} className="text-[#5D6B85] hover:text-blue-400 transition-colors" title="Edit Supplier">
                     <Edit2 size={15} />
-                  </button>
-                  <button onClick={() => handleDeleteSupplier(r.id)} className="text-[#5D6B85] hover:text-rose-400 transition-colors" title="Delete Supplier">
+                  </button>}
+                  {canDelete && <button onClick={() => handleDeleteSupplier(r.id)} className="text-[#5D6B85] hover:text-rose-400 transition-colors" title="Delete Supplier">
                     <Trash2 size={15} />
-                  </button>
+                  </button>}
                 </div>
               ),
             },

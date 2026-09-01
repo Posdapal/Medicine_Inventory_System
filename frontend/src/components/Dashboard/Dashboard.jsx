@@ -127,7 +127,7 @@ export default function Dashboard({ onNavigate }) {
       <section>
         <SectionHeading title="System records" description="Supporting master data currently available." />
         <div className="grid gap-4 sm:grid-cols-3">
-          <StatCard compact icon={Truck} title="Suppliers" value={summary?.total_suppliers} tone="purple" onClick={() => onNavigate("supplier-list", undefined, { status: "active" })} />
+          <StatCard compact icon={Truck} title="Suppliers" value={summary?.total_suppliers} tone="purple" onClick={() => onNavigate("suppliers", undefined, { status: "active" })} />
           <StatCard compact icon={Tags} title="Categories" value={summary?.total_categories} tone="blue" onClick={() => onNavigate("categories", "products", { status: "active" })} />
           <StatCard compact icon={UsersIcon} title="Users" value={summary?.total_users} tone="slate" onClick={() => onNavigate("users", undefined, { status: "active" })} />
         </div>

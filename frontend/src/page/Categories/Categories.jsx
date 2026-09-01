@@ -11,6 +11,7 @@ import {
 import { downloadExcel, downloadTemplate, parseCsvFile } from "../../utils/ExportUtils";
 import Swal from "sweetalert2";
 import { toast } from "../../utils/toast";
+import { useAuth } from "../../context/AuthContext";
 
 const CSV_HEADERS = ["name", "description", "status"];
 
@@ -71,6 +72,12 @@ function CategoryForm({ initialData, onSubmit, onClose, submitting }) {
 }
 
 function Categories({ navigationFilters = {} }) {
+  const { can } = useAuth();
+  const canCreate = can("categories", "create");
+  const canUpdate = can("categories", "update");
+  const canDelete = can("categories", "delete");
+  const canImport = can("categories", "import");
+  const canExport = can("categories", "export");
   const [query, setQuery] = useState("");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -186,7 +193,7 @@ function Categories({ navigationFilters = {} }) {
 
   return (
     <div>
-      <PageHeader title="Categories" subtitle="Products / Categories" description="Organize products into clear inventory categories." onAdd={() => setIsAddOpen(true)} addLabel="Add Category" />
+      <PageHeader title="Categories" subtitle="Products / Categories" description="Organize products into clear inventory categories." onAdd={canCreate ? () => setIsAddOpen(true) : undefined} addLabel="Add Category" />
 
       <Toolbar
         query={query}
@@ -194,8 +201,8 @@ function Categories({ navigationFilters = {} }) {
         placeholder="Search categories..."
         extra={
           <>
-            <ImportButton label="Import Categories" onImport={handleImport} />
-            <ActionButton icon={Download} label="Export Categories" onClick={handleExport} />
+            {canImport && <ImportButton label="Import Categories" onImport={handleImport} />}
+            {canExport && <ActionButton icon={Download} label="Export Categories" onClick={handleExport} />}
           </>
         }
       />
@@ -215,12 +222,12 @@ function Categories({ navigationFilters = {} }) {
               label: "Actions",
               render: (r) => (
                 <div className="flex items-center gap-3">
-                  <button onClick={() => setEditingCategory(r)} className="text-[#5D6B85] hover:text-blue-400 transition-colors" title="Edit Category">
+                  {canUpdate && <button onClick={() => setEditingCategory(r)} className="text-[#5D6B85] hover:text-blue-400 transition-colors" title="Edit Category">
                     <Edit2 size={15} />
-                  </button>
-                  <button onClick={() => handleDelete(r.id)} className="text-[#5D6B85] hover:text-rose-400 transition-colors" title="Delete Category">
+                  </button>}
+                  {canDelete && <button onClick={() => handleDelete(r.id)} className="text-[#5D6B85] hover:text-rose-400 transition-colors" title="Delete Category">
                     <Trash2 size={15} />
-                  </button>
+                  </button>}
                 </div>
               ),
             },

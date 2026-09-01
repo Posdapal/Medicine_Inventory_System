@@ -1,31 +1,20 @@
 /* eslint-disable no-empty -- mutation errors are displayed by the global API interceptor */
 import { useEffect, useState } from "react";
-import { Search, Plus, Trash2, X, Edit2, ShieldCheck } from "lucide-react";
-import { usersApi, permissionsApi } from "../../api/endpoints";
+import { createPortal } from "react-dom";
+import { Search, Plus, Trash2, X, Edit2, Eye, EyeOff } from "lucide-react";
+import { usersApi, rolesApi } from "../../api/endpoints";
 import Swal from "sweetalert2";
 import { FormInput, FormSelect, Pagination, Table } from "../../components/ui/Common";
 
-// Modules that carry per-user CRUD permissions. Keep in sync with the
-// backend's VALID_MODULES (src/middleware/auth.middleware.js).
-const MODULES = [
-  { key: "products", label: "Products" },
-  { key: "suppliers", label: "Suppliers" },
-  { key: "categories", label: "Categories" },
-  { key: "stock", label: "Stock In/Out" },
-  { key: "reports", label: "Reports" },
-];
-const ACTIONS = [
-  { key: "can_create", label: "Create" },
-  { key: "can_read", label: "Read" },
-  { key: "can_update", label: "Update" },
-  { key: "can_delete", label: "Delete" },
-];
+const normalizeRole = (role) => ({
+  id: String(role.id ?? role.role_id ?? ""),
+  name: role.name ?? role.role ?? "",
+});
 
-// Role names as stored in the `roles` table (see medicine_inventory.sql seed data).
-// Keep this in sync with the DB -- do not use "admin"/"user", those don't exist as role names.
-const ROLE_ADMIN = "Administrator";
-const ROLE_STAFF = "Staff";
-const isAdminRole = (role) => (role || "").toLowerCase() === ROLE_ADMIN.toLowerCase();
+const isRetiredRole = (role) => String(role?.name || "").trim().toLowerCase() === "staff";
+const displayRole = (role) => String(role || "").trim().toLowerCase() === "staff" ? "Stock Staff" : role;
+
+const normalizeRoleId = (value) => String(value ?? "");
 
 function PageHeader({ title, subtitle, action }) {
   return (
@@ -80,18 +69,22 @@ function Badge({ children, tone = "neutral" }) {
 
 function Modal({ isOpen, onClose, title, children, wide }) {
   if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className={`w-full ${wide ? "max-w-2xl" : "max-w-md"} bg-[#0F1626] border border-[#1E2A45] rounded-xl shadow-2xl overflow-hidden`}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#1E2A45]">
-          <h3 className="text-lg font-medium text-[#E7ECF6]">{title}</h3>
-          <button onClick={onClose} className="text-[#5D6B85] hover:text-[#E7ECF6] transition-colors">
-            <X size={18} />
-          </button>
+  return createPortal(
+    <>
+      <div className="fixed left-0 top-0 z-[9998] h-[100dvh] w-screen bg-black/45" aria-hidden="true" />
+      <div className={`fixed bottom-0 right-0 top-0 z-[9999] flex items-center justify-center p-4 ${wide ? "left-[var(--app-sidebar-width)]" : "left-0"}`}>
+        <div className={`flex max-h-[92vh] w-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl ${wide ? "max-w-[1280px]" : "max-w-md"}`}>
+          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+            <h3 className="text-lg font-medium text-slate-900">{title}</h3>
+            <button onClick={onClose} className="text-slate-400 transition-colors hover:text-slate-700">
+              <X size={18} />
+            </button>
+          </div>
+          <div className="overflow-y-auto p-5">{children}</div>
         </div>
-        <div className="p-5">{children}</div>
       </div>
-    </div>
+    </>,
+    document.body
   );
 }
 
@@ -101,7 +94,8 @@ function mapUserFromApi(u) {
     name: u.full_name,
     username: u.username,
     email: u.email,
-    role: u.role, // "Administrator" or "Staff", straight from roles.name via the API
+    role: displayRole(u.role),
+    roleId: normalizeRoleId(u.role_id ?? u.roleId),
     status: u.status,
   };
 }
@@ -109,16 +103,24 @@ function mapUserFromApi(u) {
 // UserForm doubles as add + edit. Password is only collected (and sent) on create,
 // since the backend has no admin "reset password" endpoint yet — only the user's
 // own /settings/password flow can change it.
-function UserForm({ initialData, onSubmit, onClose, submitting }) {
+function UserForm({ initialData, onSubmit, onClose, submitting, roles }) {
   const isEdit = !!initialData;
+  const [showPassword, setShowPassword] = useState(false);
+  const [roleError, setRoleError] = useState("");
   const [formData, setFormData] = useState(
-    initialData || { name: "", username: "", email: "", password: "", role: "", status: "" }
+    initialData || { name: "", username: "", email: "", password: "", roleId: "", status: "active" }
   );
+  const selectedRoleId = normalizeRoleId(formData.roleId);
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!selectedRoleId) {
+      setRoleError("Please select a role.");
+      return;
+    }
     onSubmit({
       ...formData,
+      roleId: selectedRoleId,
       name: formData.name.trim(),
       username: formData.username.trim(),
       email: formData.email.trim().toLowerCase(),
@@ -134,16 +136,38 @@ function UserForm({ initialData, onSubmit, onClose, submitting }) {
       <FormInput label="Email Address" required type="email" maxLength={120} autoComplete="email" placeholder="e.g. jane@pharmacy.com" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
 
       {!isEdit && (
-        <FormInput label="Temporary Password" required type="password" minLength={8} maxLength={128} autoComplete="new-password" placeholder="At least 8 characters" hint="Use 8 or more characters." value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
+        <FormInput
+          label="Temporary Password"
+          required
+          type={showPassword ? "text" : "password"}
+          minLength={8}
+          maxLength={128}
+          autoComplete="new-password"
+          placeholder="At least 8 characters"
+          hint="Use 8 or more characters."
+          value={formData.password}
+          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+          trailingAction={(
+            <button
+              type="button"
+              onClick={() => setShowPassword((visible) => !visible)}
+              aria-label={showPassword ? "Hide temporary password" : "Show temporary password"}
+              aria-pressed={showPassword}
+              title={showPassword ? "Hide password" : "Show password"}
+              className="rounded-md p-1 text-[#697791] transition hover:bg-slate-200/60 hover:text-blue-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 dark:hover:bg-white/[0.06]"
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          )}
+        />
       )}
 
       <div className="grid grid-cols-2 gap-4">
-        <FormSelect label="System Role" required placeholder="Select a role"
-            value={formData.role}
-            onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+        <FormSelect label="Role" required placeholder="Select a role" error={roleError}
+            value={selectedRoleId}
+            onChange={(e) => { setRoleError(""); setFormData({ ...formData, roleId: e.target.value }); }}
           >
-            <option value={ROLE_STAFF}>Staff</option>
-            <option value={ROLE_ADMIN}>Administrator</option>
+            {roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
         </FormSelect>
         <FormSelect label="Status" required placeholder="Select a status"
             value={formData.status}
@@ -158,7 +182,7 @@ function UserForm({ initialData, onSubmit, onClose, submitting }) {
         <button
           type="button"
           onClick={onClose}
-          className="px-4 py-2 border border-[#1E2A45] text-[#8B96AE] hover:text-[#E7ECF6] hover:bg-white/[0.02] text-sm font-medium rounded-lg transition-colors"
+          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900"
         >
           Cancel
         </button>
@@ -174,143 +198,9 @@ function UserForm({ initialData, onSubmit, onClose, submitting }) {
   );
 }
 
-// Module x CRUD-action checkbox grid. Admin accounts get a read-only
-// "full access" notice instead, since admins can't have permissions edited.
-function PermissionsForm({ targetUser, onClose, submitting, onSave }) {
-  const [loading, setLoading] = useState(true);
-  const [permissions, setPermissions] = useState(null); // { module: { can_create, can_read, can_update, can_delete } }
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setError("");
-      try {
-        const { data } = await permissionsApi.getForUser(targetUser.id);
-        if (!cancelled) setPermissions(data.permissions);
-      } catch (err) {
-        if (!cancelled) setError(err.message);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [targetUser.id]);
-
-  const toggle = (moduleKey, actionKey) => {
-    setPermissions((prev) => ({
-      ...prev,
-      [moduleKey]: { ...prev[moduleKey], [actionKey]: !prev[moduleKey][actionKey] },
-    }));
-  };
-
-  const toggleRow = (moduleKey, on) => {
-    setPermissions((prev) => ({
-      ...prev,
-      [moduleKey]: {
-        can_create: on, can_read: on, can_update: on, can_delete: on,
-      },
-    }));
-  };
-
-  if (isAdminRole(targetUser.role)) {
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 text-sm text-[#D7DEEB] bg-blue-500/10 border border-blue-500/30 rounded-lg px-4 py-3">
-          <ShieldCheck size={16} className="text-blue-400 shrink-0" />
-          Admin accounts always have full create/read/update/delete access everywhere.
-          Permissions can only be customized for staff (role = "Staff").
-        </div>
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 border border-[#1E2A45] text-[#8B96AE] hover:text-[#E7ECF6] hover:bg-white/[0.02] text-sm font-medium rounded-lg transition-colors"
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (loading) return <p className="text-sm text-[#8B96AE]">Loading permissions...</p>;
-  if (error) return <p className="text-sm text-rose-400">{error}</p>;
-
-  return (
-    <div className="space-y-4">
-      <p className="text-sm text-[#8B96AE]">
-        Choose exactly which modules <span className="text-[#E7ECF6] font-medium">{targetUser.name}</span> can create,
-        read, update, or delete. Unchecked = no access.
-      </p>
-
-      <div className="overflow-x-auto border border-[#1E2A45] rounded-lg">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-[#1E2A45] text-left text-[#8B96AE] text-xs uppercase tracking-wide">
-              <th className="px-3 py-2 font-medium">Module</th>
-              {ACTIONS.map((a) => (
-                <th key={a.key} className="px-3 py-2 font-medium text-center">{a.label}</th>
-              ))}
-              <th className="px-3 py-2 font-medium text-center">All</th>
-            </tr>
-          </thead>
-          <tbody>
-            {MODULES.map((m) => {
-              const row = permissions[m.key] || {};
-              const allOn = ACTIONS.every((a) => row[a.key]);
-              return (
-                <tr key={m.key} className="border-b border-[#1E2A45] last:border-0">
-                  <td className="px-3 py-2 text-[#D7DEEB]">{m.label}</td>
-                  {ACTIONS.map((a) => (
-                    <td key={a.key} className="px-3 py-2 text-center">
-                      <input
-                        type="checkbox"
-                        checked={!!row[a.key]}
-                        onChange={() => toggle(m.key, a.key)}
-                        className="w-4 h-4 accent-blue-600 cursor-pointer"
-                      />
-                    </td>
-                  ))}
-                  <td className="px-3 py-2 text-center">
-                    <input
-                      type="checkbox"
-                      checked={allOn}
-                      onChange={(e) => toggleRow(m.key, e.target.checked)}
-                      className="w-4 h-4 accent-emerald-500 cursor-pointer"
-                    />
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="flex justify-end gap-3 pt-2">
-        <button
-          type="button"
-          onClick={onClose}
-          className="px-4 py-2 border border-[#1E2A45] text-[#8B96AE] hover:text-[#E7ECF6] hover:bg-white/[0.02] text-sm font-medium rounded-lg transition-colors"
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          disabled={submitting}
-          onClick={() => onSave(permissions)}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors"
-        >
-          {submitting ? "Saving..." : "Save Permissions"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function Users({ navigationFilters = {} }) {
   const [usersList, setUsersList] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -318,7 +208,6 @@ function Users({ navigationFilters = {} }) {
 
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);      // basic profile edit
-  const [permissionsUser, setPermissionsUser] = useState(null); // permissions modal target
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, total_pages: 1 });
 
   const loadUsers = async (search, page = pagination.page, limit = pagination.limit) => {
@@ -336,6 +225,10 @@ function Users({ navigationFilters = {} }) {
   };
 
   useEffect(() => {
+    rolesApi.getAll({ active: true }).then(({ data }) => setRoles((data || []).map(normalizeRole).filter((role) => role.id && !isRetiredRole(role))));
+  }, []);
+
+  useEffect(() => {
     const timeout = setTimeout(() => loadUsers(query || undefined, pagination.page, pagination.limit), 300);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -344,6 +237,10 @@ function Users({ navigationFilters = {} }) {
   useEffect(() => { setPagination((current) => ({ ...current, page: 1 })); }, [query]);
 
   const handleAddUser = async (formData) => {
+    if (!formData.roleId) {
+      await Swal.fire({ icon: "warning", title: "Role required", text: "Please select a role." });
+      return;
+    }
     setSubmitting(true);
     try {
       await usersApi.create({
@@ -351,7 +248,8 @@ function Users({ navigationFilters = {} }) {
         username: formData.username,
         email: formData.email,
         password: formData.password,
-        role: formData.role,
+        roleId: formData.roleId,
+        status: formData.status,
       });
       setIsAddOpen(false);
       await loadUsers(query || undefined);
@@ -362,28 +260,21 @@ function Users({ navigationFilters = {} }) {
   };
 
   const handleEditUser = async (formData) => {
+    if (!formData.roleId) {
+      await Swal.fire({ icon: "warning", title: "Role required", text: "Please select a role." });
+      return;
+    }
     setSubmitting(true);
     try {
       await usersApi.update(editingUser.id, {
         full_name: formData.name,
         username: formData.username,
         email: formData.email,
-        role: formData.role,
+        roleId: formData.roleId,
         status: formData.status,
       });
       setEditingUser(null);
       await loadUsers(query || undefined);
-    } catch {
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleSavePermissions = async (permissions) => {
-    setSubmitting(true);
-    try {
-      await permissionsApi.updateForUser(permissionsUser.id, permissions);
-      setPermissionsUser(null);
     } catch {
     } finally {
       setSubmitting(false);
@@ -437,8 +328,16 @@ function Users({ navigationFilters = {} }) {
             { key: "name", label: "Name" },
             { key: "username", label: "Username" },
             { key: "email", label: "Email" },
-            { key: "role", label: "Role", render: (r) => <Badge tone={isAdminRole(r.role) ? "info" : "neutral"}>{r.role}</Badge> },
-            { key: "status", label: "Status", render: (r) => <Badge tone={r.status === "active" ? "good" : "neutral"}>{r.status}</Badge> },
+            { key: "role", label: "Role", render: (r) => <Badge tone="neutral">{r.role}</Badge> },
+            {
+              key: "status",
+              label: "Status",
+              render: (r) => {
+                const status = String(r.status || "").trim().toLowerCase();
+                const tone = status === "active" ? "good" : status === "inactive" ? "bad" : "neutral";
+                return <Badge tone={tone}>{r.status || "Unknown"}</Badge>;
+              },
+            },
             {
               key: "actions",
               label: "Actions",
@@ -446,9 +345,6 @@ function Users({ navigationFilters = {} }) {
                 <div className="flex items-center gap-3">
                   <button onClick={() => setEditingUser(r)} className="text-[#5D6B85] hover:text-blue-400 transition-colors" title="Edit User">
                     <Edit2 size={15} />
-                  </button>
-                  <button onClick={() => setPermissionsUser(r)} className="text-[#5D6B85] hover:text-emerald-400 transition-colors" title="Manage Permissions">
-                    <ShieldCheck size={15} />
                   </button>
                   <button onClick={() => handleDeleteUser(r.id)} className="text-[#5D6B85] hover:text-rose-400 transition-colors" title="Delete User">
                     <Trash2 size={15} />
@@ -465,7 +361,7 @@ function Users({ navigationFilters = {} }) {
       )}
 
       <Modal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} title="Create New System User">
-        <UserForm onSubmit={handleAddUser} onClose={() => setIsAddOpen(false)} submitting={submitting} />
+        <UserForm roles={roles} onSubmit={handleAddUser} onClose={() => setIsAddOpen(false)} submitting={submitting} />
       </Modal>
 
       <Modal isOpen={!!editingUser} onClose={() => setEditingUser(null)} title="Edit User">
@@ -475,20 +371,11 @@ function Users({ navigationFilters = {} }) {
             onSubmit={handleEditUser}
             onClose={() => setEditingUser(null)}
             submitting={submitting}
+            roles={roles}
           />
         )}
       </Modal>
 
-      <Modal isOpen={!!permissionsUser} onClose={() => setPermissionsUser(null)} title="Manage Access Permissions" wide>
-        {permissionsUser && (
-          <PermissionsForm
-            targetUser={permissionsUser}
-            onClose={() => setPermissionsUser(null)}
-            submitting={submitting}
-            onSave={handleSavePermissions}
-          />
-        )}
-      </Modal>
     </div>
   );
 }

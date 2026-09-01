@@ -5,6 +5,7 @@ import { Trash2, Edit2, Plus, ChevronRight } from "lucide-react";
 import { unitsApi } from "../../api/endpoints";
 import { Table, Toolbar, Modal, FormInput, Pagination } from "../../components/ui/Common";
 import Swal from 'sweetalert2';
+import { useAuth } from "../../context/AuthContext";
 
 function validateUnitForm(form) {
   const errors = {};
@@ -76,6 +77,10 @@ function UnitForm({ initialData, onSubmit, onClose, submitting }) {
 }
 
 function Units() {
+  const { can } = useAuth();
+  const canCreate = can("units", "create");
+  const canUpdate = can("units", "update");
+  const canDelete = can("units", "delete");
   const [query, setQuery] = useState("");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -183,14 +188,14 @@ function Units() {
               <h1 className="text-2xl font-semibold tracking-tight text-[#E7ECF6]">Units</h1>
               <p className="mt-1 text-sm text-[#8B96AE]">Manage the measurement units used across your inventory.</p>
             </div>
-            <button
+            {canCreate && <button
               type="button"
               onClick={() => setIsAddOpen(true)}
               className="inline-flex w-fit items-center justify-center gap-2 rounded-lg bg-teal-500 px-4 py-2.5 text-sm font-semibold text-slate-950 shadow-sm shadow-teal-950/30 transition-colors hover:bg-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/50 focus:ring-offset-2 focus:ring-offset-[#111A2C]"
             >
               <Plus size={16} strokeWidth={2.5} />
               Add Unit
-            </button>
+            </button>}
           </div>
         </header>
 
@@ -212,12 +217,12 @@ function Units() {
                     label: "Actions",
                     render: (r) => (
                       <div className="flex items-center gap-3">
-                        <button onClick={() => setEditingUnit(r)} className="text-[#5D6B85] hover:text-blue-400 transition-colors" title="Edit Unit">
+                        {canUpdate && <button onClick={() => setEditingUnit(r)} className="text-[#5D6B85] hover:text-blue-400 transition-colors" title="Edit Unit">
                           <Edit2 size={15} />
-                        </button>
-                        <button onClick={() => handleDelete(r.id)} className="text-[#5D6B85] hover:text-rose-400 transition-colors" title="Delete Unit">
+                        </button>}
+                        {canDelete && <button onClick={() => handleDelete(r.id)} className="text-[#5D6B85] hover:text-rose-400 transition-colors" title="Delete Unit">
                           <Trash2 size={15} />
-                        </button>
+                        </button>}
                       </div>
                     ),
                   },

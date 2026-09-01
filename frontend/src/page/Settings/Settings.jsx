@@ -1,6 +1,6 @@
 /* eslint-disable no-empty -- mutation errors are displayed by the global API interceptor */
 import { useContext, useEffect, useMemo, useState } from "react";
-import { BellRing, KeyRound, LockKeyhole, Mail, Palette, Save, ShieldCheck, UserRound } from "lucide-react";
+import { BellRing, KeyRound, LockKeyhole, Mail, Palette, ShieldCheck } from "lucide-react";
 import Swal from "sweetalert2";
 import { settingsApi } from "../../api/endpoints";
 import { useAuth } from "../../context/AuthContext";
@@ -46,17 +46,15 @@ function Toggle({ checked, onChange, label, description }) {
 function Settings() {
   const { logout } = useAuth();
   const { theme, setTheme } = useContext(ThemeCotext);
-  const [tab, setTab] = useState("profile");
+  const [tab, setTab] = useState("preferences");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [language, setLanguage] = useState("English");
-  const [profile, setProfile] = useState({ full_name: "", email: "", address: "", date_of_birth: "", gender: "" });
   const [preferences, setPreferences] = useState({ notifications_telegram: true, notifications_email: true });
   const [passwordForm, setPasswordForm] = useState({ current_password: "", new_password: "", confirm_password: "" });
 
   const tabs = [
-    { key: "profile", label: "Profile", icon: UserRound },
     { key: "preferences", label: "Preferences", icon: Palette },
     { key: "security", label: "Security", icon: ShieldCheck },
   ];
@@ -65,13 +63,6 @@ function Settings() {
     async function loadSettings() {
       try {
         const { data } = await settingsApi.get();
-        setProfile({
-          full_name: data.full_name || "",
-          email: data.email || "",
-          address: data.address || "",
-          date_of_birth: data.date_of_birth ? data.date_of_birth.substring(0, 10) : "",
-          gender: data.gender || "",
-        });
         setPreferences({
           notifications_telegram: !!data.notifications_telegram,
           notifications_email: !!data.notifications_email,
@@ -84,16 +75,6 @@ function Settings() {
     }
     loadSettings();
   }, []);
-
-  const saveProfile = async () => {
-    setSaving(true);
-    try {
-      await settingsApi.updateProfile(profile);
-    } catch {
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const togglePreference = async (key) => {
     const previous = preferences;
@@ -180,16 +161,15 @@ function Settings() {
           <div className="border-b border-slate-100 bg-shadow-black/10 from-slate-100 to-teal-100 px-5 py-5 sm:px-7">
             <div className="flex items-center gap-3">
               <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-teal-50 text-teal-300">
-                {tab === "profile" && <UserRound size={21} />}
                 {tab === "preferences" && <Palette size={21} />}
                 {tab === "security" && <LockKeyhole size={21} />}
               </span>
               <div>
                 <h3 className="font-semibold text-slate-100">
-                  {tab === "profile" ? "Personal information" : tab === "preferences" ? "Workspace preferences" : "Password & security"}
+                  {tab === "preferences" ? "Workspace preferences" : "Password & security"}
                 </h3>
                 <p className="mt-0.5 text-xs text-slate-100">
-                  {tab === "profile" ? "Keep your account details accurate and up to date." : tab === "preferences" ? "Personalize how the system works for you." : "Use a strong, unique password to protect your account."}
+                  {tab === "preferences" ? "Personalize how the system works for you." : "Use a strong, unique password to protect your account."}
                 </p>
               </div>
             </div>
@@ -199,17 +179,6 @@ function Settings() {
             {loading ? (
               <div className="grid max-w-4xl gap-5 md:grid-cols-2">
                 {[1, 2, 3].map((item) => <div key={item} className="h-20 animate-pulse rounded-xl bg-slate-800/60" />)}
-              </div>
-            ) : tab === "profile" ? (
-              <div className="max-w-4xl">
-                <div className="grid gap-5 md:grid-cols-2">
-                  <Input label="Full Name" placeholder="Enter your full name" value={profile.full_name} onChange={(e) => setProfile({ ...profile, full_name: e.target.value })} />
-                  <Input label="Email" type="email" placeholder="name@pharmacy.com" value={profile.email} onChange={(e) => setProfile({ ...profile, email: e.target.value })} />
-                  <Input label="Address" placeholder="Street, city, state" value={profile.address} onChange={(e) => setProfile({ ...profile, address: e.target.value })} className="md:col-span-2" />
-                </div>
-                <div className="mt-7 flex border-t border-slate-800 pt-6">
-                  <Button onClick={saveProfile} disabled={saving}><Save size={17} />{saving ? "Saving..." : "Save Changes"}</Button>
-                </div>
               </div>
             ) : tab === "preferences" ? (
               <div className="max-w-4xl space-y-6">

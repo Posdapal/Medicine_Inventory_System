@@ -229,11 +229,11 @@ export function ExportGroup({ onExportExcel, onExportPdf, onPrint }) {
   );
 }
 
-export function Modal({ isOpen, onClose, title, children }) {
+export function Modal({ isOpen, onClose, title, children, wide = false }) {
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="w-full max-w-md bg-[#0F1626] border border-[#1E2A45] rounded-xl shadow-2xl overflow-hidden">
+      <div className={`w-full ${wide ? "max-w-6xl" : "max-w-md"} max-h-[92vh] bg-[#0F1626] border border-[#1E2A45] rounded-xl shadow-2xl overflow-auto`}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#1E2A45]">
           <h3 className="text-lg font-medium text-[#E7ECF6]">{title}</h3>
           <button onClick={onClose} className="text-[#5D6B85] hover:text-[#E7ECF6] transition-colors">
@@ -328,7 +328,7 @@ function validationMessage(control, label) {
   return control.validationMessage || `${label} is invalid.`;
 }
 
-export function FormInput({ label, required = false, hint, error, className = "", onInvalid, onInput, ...props }) {
+export function FormInput({ label, required = false, hint, error, className = "", trailingAction, onInvalid, onInput, ...props }) {
   const [nativeError, setNativeError] = useState("");
   const errorId = useId();
   const displayedError = error || nativeError;
@@ -346,16 +346,23 @@ export function FormInput({ label, required = false, hint, error, className = ""
 
   return (
     <FormField label={label} required={required} error={displayedError} errorId={errorId}>
-      <input
-        {...props}
-        lang={props.type === "date" ? (props.lang || "en-CA") : props.lang}
-        required={required}
-        onInvalid={handleInvalid}
-        onInput={handleInput}
-        aria-invalid={Boolean(displayedError)}
-        aria-describedby={displayedError ? errorId : undefined}
-        className={`${inputClass} ${displayedError ? "border-rose-500/70 focus:ring-rose-500/30" : ""} ${className}`}
-      />
+      <div className="relative">
+        <input
+          {...props}
+          lang={props.type === "date" ? (props.lang || "en-CA") : props.lang}
+          required={required}
+          onInvalid={handleInvalid}
+          onInput={handleInput}
+          aria-invalid={Boolean(displayedError)}
+          aria-describedby={displayedError ? errorId : undefined}
+          className={`${inputClass} ${trailingAction ? "pr-11" : ""} ${displayedError ? "border-rose-500/70 focus:ring-rose-500/30" : ""} ${className}`}
+        />
+        {trailingAction && (
+          <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+            {trailingAction}
+          </div>
+        )}
+      </div>
       {hint && !displayedError && <p className="mt-1.5 text-xs text-[#697791]">{hint}</p>}
     </FormField>
   );

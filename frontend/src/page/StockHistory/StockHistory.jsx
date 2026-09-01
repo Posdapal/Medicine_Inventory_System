@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { stockApi } from "../../api/endpoints";
 import { PageHeader, Badge, Table, Toolbar, ExportGroup, Pagination } from "../../components/ui/Common";
 import { downloadExcel, printTable } from "../../utils/ExportUtils";
+import { useAuth } from "../../context/AuthContext";
 
 const HEADERS = ["Product", "Batch No.", "Movement Type", "Qty Before", "Movement Qty", "Qty After", "Date"];
 
@@ -15,6 +16,9 @@ function movementTone(type) {
 }
 
 function StockHistory() {
+  const { can } = useAuth();
+  const canExport = can("stock_history", "export");
+  const canPrint = can("stock_history", "print");
   const [query, setQuery] = useState("");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -56,7 +60,7 @@ function StockHistory() {
         query={query}
         setQuery={setQuery}
         placeholder="Search stock history..."
-        extra={<ExportGroup onExportExcel={handleExportExcel} onExportPdf={handleExportPdf} onPrint={handlePrint} />}
+        extra={(canExport||canPrint) ? <ExportGroup onExportExcel={canExport?handleExportExcel:undefined} onExportPdf={canExport?handleExportPdf:undefined} onPrint={canPrint?handlePrint:undefined} /> : null}
       />
 
       {error && <p className="text-sm text-rose-400 mb-3">{error}</p>}

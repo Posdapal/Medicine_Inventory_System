@@ -4,10 +4,14 @@ import { useEffect, useState } from "react";
 import { expiryApi } from "../../api/endpoints";
 import { PageHeader, Badge, Table, Toolbar, ExportGroup, Pagination } from "../../components/ui/Common";
 import { downloadExcel, printTable } from "../../utils/ExportUtils";
+import { useAuth } from "../../context/AuthContext";
 
 const HEADERS = ["Product", "Batch No.", "Manufacture Date", "Expiry Date", "Days Expired", "Available Qty"];
 
 function ExpiredProducts() {
+  const { can } = useAuth();
+  const canExport = can("expiry", "export");
+  const canPrint = can("expiry", "print");
   const [query, setQuery] = useState("");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -49,7 +53,7 @@ function ExpiredProducts() {
         query={query}
         setQuery={setQuery}
         placeholder="Search expired batches..."
-        extra={<ExportGroup onExportExcel={handleExportExcel} onExportPdf={handleExportPdf} onPrint={handlePrint} />}
+        extra={(canExport||canPrint) ? <ExportGroup onExportExcel={canExport?handleExportExcel:undefined} onExportPdf={canExport?handleExportPdf:undefined} onPrint={canPrint?handlePrint:undefined} /> : null}
       />
 
       {error && <p className="text-sm text-rose-400 mb-3">{error}</p>}

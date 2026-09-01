@@ -51,6 +51,8 @@ import ExpiredProducts from "./page/ExpiredProducts/ExpiredProducts";
 import Reports from "./page/Reports/Reports";
 import Users from "./page/Users/Users";
 import Settings from "./page/Settings/Settings";
+import Profile from "./page/Profile/Profile";
+import ChangePassword from "./page/ChangePassword/ChangePassword";
 
 import Navbar from "./components/Navbar/Navbar";
 import { SidebarItem } from "./components/ui/Primitives";
@@ -70,6 +72,7 @@ const NAV = [
     icon: LayoutDashboard,
     path: "/dashboard",
     Component: Dashboard,
+    module: "dashboard",
   },
 
   // ===================================================
@@ -87,6 +90,7 @@ const NAV = [
         label: "Products",
         path: "/products",
         Component: Products,
+        module: "products",
       },
 
       {
@@ -94,6 +98,7 @@ const NAV = [
         label: "Categories",
         path: "/products/categories",
         Component: Categories,
+        module: "categories",
       },
 
       {
@@ -101,6 +106,7 @@ const NAV = [
         label: "Units",
         path: "/products/units",
         Component: Units,
+        module: "units",
       },
     ],
   },
@@ -115,6 +121,7 @@ const NAV = [
     icon: Truck,
     path: "/suppliers",
     Component: Suppliers,
+    module: "suppliers",
   },
 
   // ===================================================
@@ -132,6 +139,7 @@ const NAV = [
         label: "Stock In",
         path: "/stock/stock-in",
         Component: StockIn,
+        module: "stock_in",
       },
 
       {
@@ -139,6 +147,7 @@ const NAV = [
         label: "Stock Out",
         path: "/stock/stock-out",
         Component: StockOut,
+        module: "stock_out",
       },
 
       {
@@ -146,6 +155,7 @@ const NAV = [
         label: "Current Stock",
         path: "/stock/current-stock",
         Component: CurrentStock,
+        module: "current_stock",
       },
 
       {
@@ -153,6 +163,7 @@ const NAV = [
         label: "Stock History",
         path: "/stock/stock-history",
         Component: StockHistory,
+        module: "stock_history",
       },
     ],
   },
@@ -172,6 +183,7 @@ const NAV = [
         label: "Near Expiry",
         path: "/expiry/near-expiry",
         Component: NearExpiry,
+        module: "expiry",
       },
 
       {
@@ -179,6 +191,7 @@ const NAV = [
         label: "Expired Products",
         path: "/expiry/expired-products",
         Component: ExpiredProducts,
+        module: "expiry",
       },
     ],
   },
@@ -195,8 +208,8 @@ const NAV = [
     icon: UserCog,
     path: "/users",
     Component: Users,
+    module: "users",
   },
-
     // ===================================================
   // REPORTS
   // ===================================================
@@ -207,6 +220,7 @@ const NAV = [
     icon: BarChart3,
     path: "/reports",
     Component: Reports,
+    module: "reports",
   },
 ];
 
@@ -228,6 +242,7 @@ function findPageByPath(pathname) {
       return {
         key: item.key,
         Component: item.Component,
+        module: item.module,
       };
     }
 
@@ -245,6 +260,7 @@ function findPageByPath(pathname) {
           key: child.key,
           Component: child.Component,
           parentKey: item.key,
+          module: child.module,
         };
       }
     }
@@ -258,6 +274,25 @@ function findPageByPath(pathname) {
     return {
       key: "settings",
       Component: Settings,
+      module: "settings",
+    };
+  }
+
+  // ---------------------------------------------------
+  // Profile
+  // ---------------------------------------------------
+
+  if (pathname === "/profile") {
+    return {
+      key: "profile",
+      Component: Profile,
+    };
+  }
+
+  if (pathname === "/change-password") {
+    return {
+      key: "change-password",
+      Component: ChangePassword,
     };
   }
 
@@ -319,7 +354,7 @@ function findPageByKey(pageKey) {
 // =====================================================
 
 function DashboardShell() {
-  const { logout } = useAuth();
+  const { logout, can } = useAuth();
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -336,6 +371,17 @@ function DashboardShell() {
 
   const [sidebarCollapsed, setSidebarCollapsed] =
     useState(false);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      "--app-sidebar-width",
+      sidebarCollapsed ? "6rem" : "248px"
+    );
+
+    return () => {
+      document.documentElement.style.removeProperty("--app-sidebar-width");
+    };
+  }, [sidebarCollapsed]);
 
   // ===================================================
   // CURRENT PAGE
@@ -470,6 +516,7 @@ function DashboardShell() {
 
   return (
     <div
+      style={{ "--app-sidebar-width": sidebarCollapsed ? "6rem" : "248px" }}
       className="
         flex
         min-h-screen
@@ -669,7 +716,7 @@ function DashboardShell() {
             pb-4
           "
         >
-          {NAV.map((item) => {
+          {NAV.filter((item) => item.children ? item.children.some(child => can(child.module, "read")) : can(item.module, "read")).map((item) => {
             const Icon = item.icon;
 
             // =================================================
@@ -760,7 +807,7 @@ function DashboardShell() {
                         pl-2
                       "
                     >
-                      {item.children.map(
+                      {item.children.filter(child => can(child.module, "read")).map(
                         (child) => {
                           const isActive =
                             location.pathname ===
@@ -807,7 +854,7 @@ function DashboardShell() {
         >
           {/* Settings */}
 
-          <SidebarItem
+          {can("settings", "read") && <SidebarItem
             onClick={goToSettings}
             icon={SettingsIcon}
             label="Settings"
@@ -821,7 +868,7 @@ function DashboardShell() {
                 ? "Settings"
                 : undefined
             }
-          />
+          />}
 
           {/* Logout */}
 
@@ -863,12 +910,10 @@ function DashboardShell() {
               lg:px-8
             "
           >
-            <ActivePage
+            {(!active.module || can(active.module, "read")) ? <ActivePage
               onNavigate={selectPage}
-              navigationFilters={
-                navigationFilters
-              }
-            />
+              navigationFilters={navigationFilters}
+            /> : <Navigate to="/dashboard" replace />}
           </div>
         </main>
       </div>
@@ -1005,6 +1050,16 @@ export default function App() {
 
             <Route
               path="/settings"
+              element={<DashboardShell />}
+            />
+
+            <Route
+              path="/profile"
+              element={<DashboardShell />}
+            />
+
+            <Route
+              path="/change-password"
               element={<DashboardShell />}
             />
 

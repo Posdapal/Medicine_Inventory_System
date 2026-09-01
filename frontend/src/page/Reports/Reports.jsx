@@ -4,6 +4,7 @@ import { reportsApi } from "../../api/endpoints";
 import { Card, FormDatePicker, PageHeader, Table } from "../../components/ui/Common";
 import { downloadExcel } from "../../utils/ExportUtils";
 import { toast } from "../../utils/toast";
+import { useAuth } from "../../context/AuthContext";
 
 const REPORT_TYPES = [
   { value: "products", label: "Products", columns: [["product_code", "Code"], ["product_name", "Product Name"], ["generic_name", "Generic Name"], ["category", "Category"], ["unit", "Unit"], ["minimum_stock", "Min Stock"], ["status", "Status"], ["created_date", "Created Date"]] },
@@ -56,6 +57,8 @@ function displayValue(value, key) {
 }
 
 export default function Reports() {
+  const { can } = useAuth();
+  const canExport = can("reports", "export");
   const [reportType, setReportType] = useState(REPORT_TYPES[0].value);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -133,10 +136,10 @@ export default function Reports() {
           <div><ReportTypeSelect value={reportType} onChange={setReportType} /></div>
           <div><FormDatePicker label="From Date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} /></div>
           <div><FormDatePicker label="To Date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} min={dateFrom || undefined} /></div>
-          <button type="button" onClick={handleGenerate} disabled={generating} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-950/20 transition hover:-translate-y-0.5 hover:bg-emerald-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0">
+          {canExport && <button type="button" onClick={handleGenerate} disabled={generating} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-950/20 transition hover:-translate-y-0.5 hover:bg-emerald-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0">
             {generating ? <FileSpreadsheet className="animate-pulse" size={17} /> : <Download size={17} />}
             {generating ? "Generating..." : "Generate"}
-          </button>
+          </button>}
         </div>
       </Card>
 

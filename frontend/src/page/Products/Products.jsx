@@ -14,6 +14,7 @@ import {
 import { downloadExcel, downloadTemplate, parseCsvFile } from "../../utils/ExportUtils";
 import Swal from 'sweetalert2';
 import { toast } from "../../utils/toast";
+import { useAuth } from "../../context/AuthContext";
 
 function stockTone(stock, minimum) {
   return stock <= minimum ? "bad" : stock <= minimum * 1.5 ? "warn" : "good";
@@ -151,6 +152,13 @@ function ProductForm({ initialData, onSubmit, onClose, categories, units, submit
 const CSV_HEADERS = ["Product Code", "Product Name", "Generic Name", "Category Name", "Unit", "Minimum Stock", "Status"];
 
 function Products({ navigationFilters = {} }) {
+  const { can } = useAuth();
+  const canCreate = can("products", "create");
+  const canUpdate = can("products", "update");
+  const canDelete = can("products", "delete");
+  const canImport = can("products", "import");
+  const canExport = can("products", "export");
+  const canDownloadTemplate = can("products", "download_template");
   const [productsList, setProductsList] = useState([]);
   const [categories, setCategories] = useState([]);
   const [units, setUnits] = useState([]);
@@ -305,7 +313,7 @@ function Products({ navigationFilters = {} }) {
 
   return (
     <div>
-      <PageHeader title="Product List" subtitle="Products / Product List" description={navigationFilters.status === "active" ? "Showing active products from the dashboard." : "Manage products and their inventory details."} onAdd={() => setIsAddOpen(true)} addLabel="Add Product" />
+      <PageHeader title="Product List" subtitle="Products / Product List" description={navigationFilters.status === "active" ? "Showing active products from the dashboard." : "Manage products and their inventory details."} onAdd={canCreate ? () => setIsAddOpen(true) : undefined} addLabel="Add Product" />
 
       <Toolbar
         query={query}
@@ -313,9 +321,9 @@ function Products({ navigationFilters = {} }) {
         placeholder="Search products..."
         extra={
           <>
-            <ImportButton label="Import Products" onImport={handleImportProducts} />
-            <ActionButton icon={Download} label="Export Products" onClick={handleExportProducts} />
-            <ActionButton icon={Download} label="Download Template" onClick={() => downloadXlsxTemplate("product-template.xlsx", CSV_HEADERS)} />
+            {canImport && <ImportButton label="Import Products" onImport={handleImportProducts} />}
+            {canExport && <ActionButton icon={Download} label="Export Products" onClick={handleExportProducts} />}
+            {canDownloadTemplate && <ActionButton icon={Download} label="Download Template" onClick={() => downloadXlsxTemplate("product-template.xlsx", CSV_HEADERS)} />}
           </>
         }
       />
@@ -335,21 +343,21 @@ function Products({ navigationFilters = {} }) {
             { key: "available_quantity", label: "Stock", render: (r) => <Badge tone={stockTone(r.available_quantity, r.minimum_stock)}>{r.available_quantity} {r.unit}</Badge> },
             { key: "minimum_stock", label: "Min Stock" },
             { key: "status", label: "Status", render: (r) => <Badge tone={r.status === "active" ? "good" : "neutral"}>{formatStatus(r.status)}</Badge> },
-            {
+            (canUpdate || canDelete) && {
               key: "actions",
               label: "Actions",
               render: (r) => (
                 <div className="flex items-center gap-3">
-                  <button onClick={() => setEditingProduct(r)} className="text-[#5D6B85] hover:text-blue-400 transition-colors" title="Edit Product">
+                  {canUpdate && <button onClick={() => setEditingProduct(r)} className="text-[#5D6B85] hover:text-blue-400 transition-colors" title="Edit Product">
                     <Edit2 size={15} />
-                  </button>
-                  <button onClick={() => handleDeleteProduct(r.id)} className="text-[#5D6B85] hover:text-rose-400 transition-colors" title="Delete Product">
+                  </button>}
+                  {canDelete && <button onClick={() => handleDeleteProduct(r.id)} className="text-[#5D6B85] hover:text-rose-400 transition-colors" title="Delete Product">
                     <Trash2 size={15} />
-                  </button>
+                  </button>}
                 </div>
               ),
             },
-          ]}
+          ].filter(Boolean)}
           rows={productsList}
           rowOffset={(pagination.page - 1) * pagination.limit}
         />
