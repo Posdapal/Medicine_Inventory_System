@@ -51,7 +51,7 @@ CREATE TABLE `users` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------------------------
--- USER_PERMISSIONS  (per-user, per-module CRUD overrides)
+-- USER_PERMISSIONS  (per-user, per-module action overrides)
 -- ----------------------------------------------------------------------------
 DROP TABLE IF EXISTS `user_permissions`;
 CREATE TABLE `user_permissions` (
@@ -62,6 +62,9 @@ CREATE TABLE `user_permissions` (
   `can_read`    TINYINT(1) NOT NULL DEFAULT 0,
   `can_update`  TINYINT(1) NOT NULL DEFAULT 0,
   `can_delete`  TINYINT(1) NOT NULL DEFAULT 0,
+  `can_export`  TINYINT(1) NOT NULL DEFAULT 0,
+  `can_import`  TINYINT(1) NOT NULL DEFAULT 0,
+  `can_download_template` TINYINT(1) NOT NULL DEFAULT 0,
   `created_at`  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at`  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY `uq_user_module` (`user_id`, `module`),
@@ -327,7 +330,8 @@ SET FOREIGN_KEY_CHECKS = 1;
 
 INSERT INTO `roles` (`name`, `description`) VALUES
   ('Administrator', 'Full access to all modules'),
-  ('Staff', 'Can manage stock but not system settings');
+  ('Pharmacist', 'Dispensing and inventory visibility'),
+  ('Stock Staff', 'Receiving and stock operations');
 
 -- Default login: email "admin@clinic.local", password "admin123"
 -- (this is a REAL bcrypt hash of "admin123", verified to work with
@@ -338,12 +342,13 @@ INSERT INTO `users` (`role_id`, `full_name`, `username`, `email`, `password`, `s
    '$2b$10$VqS.Rio.P2w/DK0kFXP5seo5rP/jSPraEcutODBPfRHOli317zak2', 'active');
 
 -- Administrator gets full CRUD on every module by default.
-INSERT INTO `user_permissions` (`user_id`, `module`, `can_create`, `can_read`, `can_update`, `can_delete`) VALUES
-  (1, 'products',   1, 1, 1, 1),
-  (1, 'suppliers',  1, 1, 1, 1),
-  (1, 'categories', 1, 1, 1, 1),
-  (1, 'stock',      1, 1, 1, 1),
-  (1, 'reports',    1, 1, 1, 1);
+INSERT INTO `user_permissions`
+  (`user_id`, `module`, `can_create`, `can_read`, `can_update`, `can_delete`, `can_export`, `can_import`, `can_download_template`) VALUES
+  (1, 'products',   1, 1, 1, 1, 1, 1, 1),
+  (1, 'suppliers',  1, 1, 1, 1, 1, 1, 1),
+  (1, 'categories', 1, 1, 1, 1, 1, 1, 1),
+  (1, 'stock',      1, 1, 1, 1, 1, 1, 1),
+  (1, 'reports',    1, 1, 1, 1, 1, 1, 1);
 
 INSERT INTO `system_settings` (`setting_key`, `setting_value`, `description`) VALUES
   ('clinic_name', 'City Clinic', 'Displayed in the app header and printed reports'),

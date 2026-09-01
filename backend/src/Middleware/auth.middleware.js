@@ -2,18 +2,9 @@ const jwt = require('jsonwebtoken');
 const { fail, query } = require('../utils/helper');
 
 // Keep this list in sync with the ENUM in migration_user_permissions.sql
-const VALID_MODULES = ['products', 'suppliers', 'categories', 'stock', 'reports'];
+const { MODULES: VALID_MODULES, ACTION_COLUMNS: ACTION_COLUMN } = require('../config/permissions');
 
-const ACTION_COLUMN = {
-  create: 'can_create',
-  read: 'can_read',
-  update: 'can_update',
-  delete: 'can_delete',
-};
-
-// Roles table stores 'Administrator' / 'Staff' (see seed data). The JWT is
-// expected to carry role as a lowercased string (see auth.controller.js login),
-// so compare against lowercase here too.
+// The JWT carries the database role name as a lowercased string.
 const ADMIN_ROLE = 'administrator';
 
 // Verifies the Bearer token and attaches the decoded payload to req.user
@@ -26,7 +17,7 @@ function verifyToken(req, res, next) {
   const token = header.split(' ')[1];
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // { id, email, role, full_name } -- role is lowercase, e.g. "administrator" or "staff"
+    req.user = decoded; // { id, email, role, full_name }
     next();
   } catch (err) {
     return fail(res, 'Invalid or expired token', 401);
@@ -56,7 +47,7 @@ function requirePasswordChanged(req, res, next) {
 
 // Use after verifyToken to gate a route on a specific module + CRUD action.
 // - Administrators always pass (full CRUD everywhere).
-// - Staff must have an explicit user_permissions row for the module with the
+// - Operational roles must have an explicit role permission for the module with the
 //   relevant can_* flag set to 1, granted by an admin via /api/permissions.
 function checkPermission(module, action) {
   if (!VALID_MODULES.includes(module)) throw new Error(`checkPermission: unknown module "${module}"`);
@@ -66,12 +57,14 @@ function checkPermission(module, action) {
   return async function (req, res, next) {
     try {
       if (!req.user) return fail(res, 'Authentication token missing', 401);
-      if (req.user.role === ADMIN_ROLE) return next();
-
       const rows = await query(
-        `SELECT ${column} AS allowed FROM user_permissions WHERE user_id = ? AND module = ?`,
-        [req.user.id, module]
+        `SELECT r.name AS role_name, rp.${column} AS allowed FROM users u
+         JOIN roles r ON r.id=u.role_id
+         LEFT JOIN role_permissions rp ON rp.role_id=r.id AND rp.module=?
+         WHERE u.id=? AND u.status='active'`,
+        [module, req.user.id]
       );
+      if (rows[0]?.role_name?.toLowerCase() === ADMIN_ROLE) return next();
       if (!rows[0] || !rows[0].allowed) {
         return fail(res, `You do not have ${action} access to ${module}`, 403);
       }

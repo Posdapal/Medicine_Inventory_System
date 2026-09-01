@@ -7,11 +7,15 @@ const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}
 // user here is the JOINed row: { id, full_name, email, password, role (from roles.name),
 // status, must_change_password, created_at, updated_at }
 function publicUser(user) {
+  const normalizedRole = user.role.toLowerCase() === 'staff' ? 'stock staff' : user.role.toLowerCase();
   return {
     id: user.id,
+    full_name: user.full_name,
     fullName: user.full_name,
+    username: user.username,
     email: user.email,
-    role: user.role.toLowerCase(), // "administrator" or "staff" -- matches ADMIN_ROLE in auth.middleware.js
+    role: normalizedRole,
+    roleId: user.role_id,
     status: user.status,
     mustChangePassword: Boolean(user.must_change_password),
     createdAt: user.created_at,
@@ -20,7 +24,7 @@ function publicUser(user) {
 }
 
 const USER_WITH_ROLE_SELECT = `
-  SELECT u.id, u.full_name, u.email, u.password, r.name AS role, u.status,
+  SELECT u.id, u.full_name, u.username, u.email, u.password, u.role_id, r.name AS role, u.status,
          u.must_change_password, u.created_at, u.updated_at
   FROM users u
   JOIN roles r ON r.id = u.role_id

@@ -4,7 +4,7 @@ const c = require('../controllers/expiry.controller');
 
 router.use(verifyToken);
 
-router.get('/near', c.getNearExpiry);
-router.get('/expired', c.getExpired);
+router.get('/near', checkPermission('expiry', 'read'), c.getNearExpiry);
+router.get('/expired', checkPermission('expiry', 'read'), c.getExpired);
 
 module.exports = router;

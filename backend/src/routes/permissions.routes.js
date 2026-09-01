@@ -1,11 +1,9 @@
 const router = require('express').Router();
-const { verifyToken, requireAdmin } = require('../middleware/auth.middleware');
+const { verifyToken } = require('../middleware/auth.middleware');
 const c = require('../controllers/permissions.controller');
 
-// Only admins can view or change any user's module permissions
-router.use(verifyToken, requireAdmin);
+router.use(verifyToken);
 
-router.get('/:userId', c.getForUser);
-router.put('/:userId', c.updateForUser);
+router.get('/me', c.getMine);
 
 module.exports = router;

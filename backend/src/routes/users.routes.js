@@ -1,14 +1,14 @@
 const router = require('express').Router();
-const { verifyToken, requireAdmin } = require('../middleware/auth.middleware');
+const { verifyToken, checkPermission } = require('../middleware/auth.middleware');
 const c = require('../controllers/users.controller');
 
 // User Management is admin-only across the board
-router.use(verifyToken, requireAdmin);
+router.use(verifyToken);
 
-router.get('/', c.getAll);
-router.get('/:id', c.getById);
-router.post('/', c.create);
-router.put('/:id', c.update);
-router.delete('/:id', c.remove);
+router.get('/', checkPermission('users','read'), c.getAll);
+router.get('/:id', checkPermission('users','read'), c.getById);
+router.post('/', checkPermission('users','create'), c.create);
+router.put('/:id', checkPermission('users','update'), c.update);
+router.delete('/:id', checkPermission('users','delete'), c.remove);
 
 module.exports = router;

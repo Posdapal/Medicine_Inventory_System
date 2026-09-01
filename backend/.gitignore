@@ -1,0 +1,71 @@
+# Dependencies
+node_modules/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build / generated files
+dist/
+build/
+coverage/
+.graphiql-out/
+graphify-out/
+
+# Runtime files
+*.pid
+*.seed
+*.pid.lock
+
+# Cache
+.cache/
+.tmp/
+temp/
+tmp/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test output
+coverage/
+.nyc_output/
+
+# Local database / backup files
+*.sqlite
+*.sqlite3
+*.db
+*.bak
+
+# Uploaded/generated files
+uploads/
+storage/
+
+# Secrets / certificates
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# Package manager cache
+.npm/
+.pnpm-store/
+
+# Optional local config
+config.local.*

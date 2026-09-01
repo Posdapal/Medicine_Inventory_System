@@ -95,7 +95,7 @@ describe('auth.middleware requireAdmin', () => {
   });
 
   it('rejects a non-admin role', () => {
-    const req = { user: { role: 'staff' } };
+    const req = { user: { role: 'stock staff' } };
     const res = mockRes();
     const next = jest.fn();
 
