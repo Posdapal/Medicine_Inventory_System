@@ -331,8 +331,196 @@ const getStockHistory = asyncHandler(async (req, res) => {
   return ok(res, rows);
 });
 
+// PUT /api/stock/in/:id
+const updateStockIn = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const {
+    product, product_id, supplier, supplier_id,
+    batch_number, manufacture_date, expiry_date,
+    received_quantity, purchase_price,
+    reference_number, transaction_date,
+  } = req.body;
+
+  const qty = Number(received_quantity);
+  if (!batch_number || !qty || qty <= 0) {
+    return fail(res, 'Batch number and a positive received quantity are required', 400);
+  }
+
+  const tx = (
+    await query(`SELECT * FROM stock_transactions WHERE id = ? AND transaction_type = 'stock_in'`, [id])
+  )[0];
+  if (!tx) return fail(res, 'Stock In record not found', 404);
+
+  const item = (
+    await query('SELECT * FROM stock_transaction_items WHERE stock_transaction_id = ?', [id])
+  )[0];
+  if (!item) return fail(res, 'Stock In item not found', 404);
+
+  const oldBatch = (await query('SELECT * FROM product_batches WHERE id = ?', [item.batch_id]))[0];
+  if (!oldBatch) return fail(res, 'Original batch not found', 400);
+
+  const productRow = await resolveProduct({ product_id, product });
+  if (!productRow) return fail(res, 'Product not found', 400);
+
+  const supplierRow = await resolveSupplier({ supplier_id, supplier });
+
+  // Step 1 — undo what this record originally added to its batch
+  const revertedAvailable = Math.max(0, oldBatch.available_quantity - item.quantity);
+  const revertedReceived = Math.max(0, oldBatch.received_quantity - item.quantity);
+  await query(
+    'UPDATE product_batches SET available_quantity = ?, received_quantity = ? WHERE id = ?',
+    [revertedAvailable, revertedReceived, oldBatch.id]
+  );
+
+  // Step 2 — apply the new values to whichever batch they now target
+  // (same product_id + batch_number as before => same batch, post-revert;
+  //  a different batch_number/product => a different or brand-new batch)
+  let targetBatch = (
+    await query('SELECT * FROM product_batches WHERE product_id = ? AND batch_number = ?', [productRow.id, batch_number])
+  )[0];
+
+  let batchId, quantityBefore, quantityAfter;
+
+  if (targetBatch) {
+    quantityBefore = targetBatch.available_quantity;
+    quantityAfter = quantityBefore + qty;
+    await query(
+      `UPDATE product_batches
+       SET received_quantity = received_quantity + ?, available_quantity = ?,
+           manufacture_date = COALESCE(?, manufacture_date),
+           expiry_date = COALESCE(?, expiry_date),
+           purchase_price = ?, status = 'active'
+       WHERE id = ?`,
+      [qty, quantityAfter, manufacture_date || null, expiry_date || null, purchase_price || targetBatch.purchase_price, targetBatch.id]
+    );
+    batchId = targetBatch.id;
+  } else {
+    quantityBefore = 0;
+    quantityAfter = qty;
+    const batchResult = await query(
+      `INSERT INTO product_batches
+         (product_id, batch_number, manufacture_date, expiry_date, received_quantity, available_quantity, purchase_price, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'active')`,
+      [productRow.id, batch_number, manufacture_date || null, expiry_date || null, qty, qty, purchase_price || 0]
+    );
+    batchId = batchResult.insertId;
+  }
+
+  // Step 3 — update the transaction header
+  await query(
+    `UPDATE stock_transactions SET supplier_id = ?, reference_number = ?, transaction_date = ? WHERE id = ?`,
+    [supplierRow ? supplierRow.id : null, reference_number || null, transaction_date || tx.transaction_date, id]
+  );
+
+  // Step 4 — update the line item
+  await query(
+    `UPDATE stock_transaction_items SET product_id = ?, batch_id = ?, quantity = ?, unit_price = ? WHERE id = ?`,
+    [productRow.id, batchId, qty, purchase_price || 0, item.id]
+  );
+
+  // Step 5 — audit trail
+  await query(
+    `INSERT INTO stock_movements (product_id, batch_id, transaction_id, created_by, movement_type, quantity_before, movement_quantity, quantity_after)
+     VALUES (?, ?, ?, ?, 'stock_in_adjustment', ?, ?, ?)`,
+    [productRow.id, batchId, tx.id, req.user?.id || null, quantityBefore, qty, quantityAfter]
+  );
+
+  return ok(res, { id: tx.id }, 'Stock In record updated');
+});
+
+// PUT /api/stock/out/:id
+const updateStockOut = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const {
+    product, product_id, batch_number, batch_id,
+    quantity, reason, reference_number, transaction_date,
+  } = req.body;
+
+  const qty = Number(quantity);
+  if (!qty || qty <= 0) return fail(res, 'A positive quantity is required', 400);
+
+  const tx = (
+    await query(`SELECT * FROM stock_transactions WHERE id = ? AND transaction_type = 'stock_out'`, [id])
+  )[0];
+  if (!tx) return fail(res, 'Stock Out record not found', 404);
+
+  const item = (
+    await query('SELECT * FROM stock_transaction_items WHERE stock_transaction_id = ?', [id])
+  )[0];
+  if (!item) return fail(res, 'Stock Out item not found', 404);
+
+  const oldBatch = (await query('SELECT * FROM product_batches WHERE id = ?', [item.batch_id]))[0];
+  if (!oldBatch) return fail(res, 'Original batch not found', 400);
+
+  const productRow = await resolveProduct({ product_id, product });
+  if (!productRow) return fail(res, 'Product not found', 400);
+
+  // Step 1 — undo what this record originally drew down from its batch
+  const restoredAvailable = oldBatch.available_quantity + item.quantity;
+  await query(
+    'UPDATE product_batches SET available_quantity = ?, status = ? WHERE id = ?',
+    [restoredAvailable, 'active', oldBatch.id]
+  );
+
+  // Step 2 — resolve whichever batch the edited values now target
+  // (could be the same batch, post-restore, or a different one)
+  let targetBatch;
+  if (batch_id) {
+    targetBatch = (await query('SELECT * FROM product_batches WHERE id = ? AND product_id = ?', [batch_id, productRow.id]))[0];
+  } else if (batch_number) {
+    targetBatch = (await query('SELECT * FROM product_batches WHERE product_id = ? AND batch_number = ?', [productRow.id, batch_number]))[0];
+  }
+  if (!targetBatch) {
+    // Roll the restore back before bailing, so a bad edit doesn't leave stock inflated
+    await query(
+      'UPDATE product_batches SET available_quantity = ?, status = ? WHERE id = ?',
+      [oldBatch.available_quantity, oldBatch.status, oldBatch.id]
+    );
+    return fail(res, 'Batch not found for this product', 400);
+  }
+
+  // If target batch is the same row we just restored, re-read isn't needed —
+  // but if it's a different batch, targetBatch.available_quantity is already current.
+  const currentAvailable = targetBatch.id === oldBatch.id ? restoredAvailable : targetBatch.available_quantity;
+  if (currentAvailable < qty) {
+    await query(
+      'UPDATE product_batches SET available_quantity = ?, status = ? WHERE id = ?',
+      [oldBatch.available_quantity, oldBatch.status, oldBatch.id]
+    );
+    return fail(res, `Insufficient stock in batch ${targetBatch.batch_number} (available: ${currentAvailable})`, 400);
+  }
+
+  const quantityBefore = currentAvailable;
+  const quantityAfter = quantityBefore - qty;
+  await query(
+    'UPDATE product_batches SET available_quantity = ?, status = ? WHERE id = ?',
+    [quantityAfter, quantityAfter === 0 ? 'depleted' : 'active', targetBatch.id]
+  );
+
+  // Step 3 — update the transaction header
+  await query(
+    `UPDATE stock_transactions SET reason = ?, reference_number = ?, transaction_date = ? WHERE id = ?`,
+    [reason || tx.reason, reference_number || null, transaction_date || tx.transaction_date, id]
+  );
+
+  // Step 4 — update the line item
+  await query(
+    `UPDATE stock_transaction_items SET product_id = ?, batch_id = ?, quantity = ?, unit_price = ? WHERE id = ?`,
+    [productRow.id, targetBatch.id, qty, targetBatch.purchase_price, item.id]
+  );
+
+  // Step 5 — audit trail
+  await query(
+    `INSERT INTO stock_movements (product_id, batch_id, transaction_id, created_by, movement_type, quantity_before, movement_quantity, quantity_after)
+     VALUES (?, ?, ?, ?, 'stock_out_adjustment', ?, ?, ?)`,
+    [productRow.id, targetBatch.id, tx.id, req.user?.id || null, quantityBefore, qty, quantityAfter]
+  );
+
+  return ok(res, { id: tx.id }, 'Stock Out record updated');
+});
+
 module.exports = {
-  getStockIn, createStockIn, removeStockIn,
-  getStockOut, createStockOut, removeStockOut,
+  getStockIn, createStockIn, updateStockIn, removeStockIn,
+  getStockOut, createStockOut, updateStockOut, removeStockOut,
   getCurrentStock, getStockHistory,
 };

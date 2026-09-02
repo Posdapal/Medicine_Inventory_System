@@ -1,47 +1,47 @@
-/* eslint-disable no-empty -- mutation errors are displayed by the global API interceptor */
-// StockOut.jsx — Stock Management > Stock Out
-// Creates a STOCK_TRANSACTION (transaction_type = "stock_out") that draws
-// down an existing PRODUCT_BATCH's available_quantity, with a reason and
-// reference_number.
 import { useEffect, useState } from "react";
-import { Trash2, Download } from "lucide-react";
+import { Trash2, Download, Pencil } from "lucide-react";
 import { stockApi, productsApi } from "../../api/endpoints";
 import {
   PageHeader, Badge, Table, Toolbar, Modal, FormInput, FormSelect, FormDatePicker,
   ImportButton, ActionButton, Pagination,
 } from "../../components/ui/Common";
-import { downloadExcel, parseCsvFile } from "../../utils/ExportUtils";
+import { downloadXlsx, downloadXlsxTemplate, parseImportFile } from "../../utils/ExportUtils";
 import Swal from "sweetalert2";
 import { toast } from "../../utils/toast";
 
 const CSV_HEADERS = ["product", "batch_number", "quantity", "reason", "reference_number", "transaction_date"];
 const REASONS = ["Sale", "Damaged", "Expired", "Internal Use", "Other"];
 
-function StockOutForm({ onSubmit, onClose, products, submitting }) {
-  const [form, setForm] = useState({
-    product: "",
-    batch_number: "",
-    quantity: "",
-    reason: "",
-    reference_number: "",
-    transaction_date: new Date().toISOString().slice(0, 10),
-  });
+function StockOutForm({ onSubmit, onClose, products, submitting, initialValues, submitLabel }) {
+  const [form, setForm] = useState(() => ({
+    product: initialValues?.product || "",
+    batch_number: initialValues?.batch_number || "",
+    quantity: initialValues?.quantity ?? "",
+    reason: initialValues?.reason || "",
+    reference_number: initialValues?.reference_number || "",
+    transaction_date: initialValues?.transaction_date || new Date().toISOString().slice(0, 10),
+  }));
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit({ ...form, batch_number: form.batch_number.trim(), reference_number: form.reference_number.trim(), quantity: Number(form.quantity) });
+    onSubmit({
+      ...form,
+      batch_number: form.batch_number.trim(),
+      reference_number: form.reference_number.trim(),
+      quantity: Number(form.quantity),
+    });
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <FormSelect label="Product" required placeholder="Select a product" value={form.product} onChange={(e) => setForm({ ...form, product: e.target.value })}>
-          {products.map((p) => <option key={p.id} value={p.product_name}>{p.product_name}</option>)}
+        {products.map((p) => <option key={p.id} value={p.product_name}>{p.product_name}</option>)}
       </FormSelect>
       <FormInput label="Batch Number" required type="text" minLength={2} maxLength={50} placeholder="e.g. BATCH-2026-001" value={form.batch_number} onChange={(e) => setForm({ ...form, batch_number: e.target.value })} />
       <div className="grid grid-cols-2 gap-4">
         <FormInput label="Quantity" required type="number" min="1" step="1" inputMode="numeric" placeholder="e.g. 5" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} />
         <FormSelect label="Reason" required placeholder="Select a reason" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })}>
-            {REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
+          {REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
         </FormSelect>
       </div>
       <div className="grid grid-cols-2 gap-4">
@@ -53,7 +53,7 @@ function StockOutForm({ onSubmit, onClose, products, submitting }) {
           Cancel
         </button>
         <button type="submit" disabled={submitting} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors">
-          {submitting ? "Saving..." : "Create Stock Out"}
+          {submitting ? "Saving..." : (submitLabel || "Create Stock Out")}
         </button>
       </div>
     </form>
@@ -68,6 +68,7 @@ function StockOut({ navigationFilters = {} }) {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [editingRow, setEditingRow] = useState(null);
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, total_pages: 1 });
 
   useEffect(() => {
@@ -116,8 +117,20 @@ function StockOut({ navigationFilters = {} }) {
     }
   };
 
+  const handleUpdate = async (form) => {
+    setSubmitting(true);
+    try {
+      await stockApi.stockOut.update(editingRow.id, form);
+      setEditingRow(null);
+      await loadRows(query || undefined);
+    } catch {
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleDelete = async (id) => {
-     const result = await Swal.fire({
+    const result = await Swal.fire({
       title: "Are you sure?",
       text: "You want to delete this record!",
       background: "#0B1220",
@@ -127,53 +140,30 @@ function StockOut({ navigationFilters = {} }) {
       confirmButtonColor: "#3085d6",
       cancelButtonColor: "#d33",
       confirmButtonText: "Yes, delete it!",
-      showClass: {
-        popup: `
-          animate__animated
-          animate__fadeInUp
-          animate__faster
-        `,
-      },
-      hideClass: {
-        popup: `
-          animate__animated
-          animate__fadeOutDown
-          animate__faster
-        `,
-      },
+      showClass: { popup: `animate__animated animate__fadeInUp animate__faster` },
+      hideClass: { popup: `animate__animated animate__fadeOutDown animate__faster` },
     });
 
-    // Cancel or dismiss (clicking outside, Esc) both land here and just stop
     if (!result.isConfirmed) return;
 
     try {
       await stockApi.stockOut.remove(id);
       await loadRows(query || undefined);
-
     } catch {
     }
-    // if (!confirm("Remove this stock-out record?")) return;
-    // try {
-    //   await stockApi.stockOut.remove(id);
-    //   await loadRows(query || undefined);
-    // } catch (err) {
-    //   alert(err.message);
-    // }
   };
 
   const handleExport = () => {
-    downloadExcel(
+    downloadXlsx(
       "stock-out.xlsx",
-      "Stock Out",
-      ["Product", "Batch No.", "Quantity", "Reason", "Reference No.", "Date"],
+      CSV_HEADERS,
       rows.map((r) => [r.product, r.batch_number, r.quantity, r.reason, r.reference_number, r.transaction_date]),
-      (pagination.page - 1) * pagination.limit
     );
   };
 
   const handleImport = async (file) => {
     try {
-      const records = await parseCsvFile(file);
+      const records = await parseImportFile(file);
       setSubmitting(true);
       for (const r of records) {
         await stockApi.stockOut.create({
@@ -206,6 +196,7 @@ function StockOut({ navigationFilters = {} }) {
           <>
             <ImportButton label="Import Stock Out" onImport={handleImport} />
             <ActionButton icon={Download} label="Export Stock Out" onClick={handleExport} />
+            <ActionButton icon={Download} label="Download Template" onClick={() => downloadXlsxTemplate("stock-out.xlsx", CSV_HEADERS)} />
           </>
         }
       />
@@ -214,32 +205,59 @@ function StockOut({ navigationFilters = {} }) {
       {loading ? (
         <p className="text-sm text-[#8B96AE]">Loading stock-out records...</p>
       ) : (
-        <><Table
-          columns={[
-            { key: "product", label: "Product" },
-            { key: "batch_number", label: "Batch No." },
-            { key: "quantity", label: "Quantity", render: (r) => <Badge tone="bad">-{r.quantity}</Badge> },
-            { key: "reason", label: "Reason", render: (r) => <Badge>{r.reason}</Badge> },
-            { key: "reference_number", label: "Reference No.", render: (r) => r.reference_number || "—" },
-            { key: "transaction_date", label: "Date" },
-            {
-              key: "actions",
-              label: "Actions",
-              render: (r) => (
-                <button onClick={() => handleDelete(r.id)} className="text-[#5D6B85] hover:text-rose-400 transition-colors" title="Delete Record">
-                  <Trash2 size={15} />
-                </button>
-              ),
-            },
-          ]}
-          rows={rows}
-          rowOffset={(pagination.page - 1) * pagination.limit}
-        />
-        <Pagination page={pagination.page} totalPages={pagination.total_pages} total={pagination.total} limit={pagination.limit} onPageChange={(page) => setPagination((current) => ({ ...current, page }))} onLimitChange={(limit) => setPagination((current) => ({ ...current, page: 1, limit }))} /></>
+        <>
+          <Table
+            columns={[
+              { key: "product", label: "Product" },
+              { key: "batch_number", label: "Batch No." },
+              { key: "quantity", label: "Quantity", render: (r) => <Badge tone="bad">-{r.quantity}</Badge> },
+              { key: "reason", label: "Reason", render: (r) => <Badge>{r.reason}</Badge> },
+              { key: "reference_number", label: "Reference No.", render: (r) => r.reference_number || "—" },
+              { key: "transaction_date", label: "Transaction Date" },
+              {
+                key: "actions",
+                label: "Actions",
+                render: (r) => (
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => setEditingRow(r)} className="text-[#5D6B85] hover:text-blue-400 transition-colors" title="Edit Record">
+                      <Pencil size={15} />
+                    </button>
+                    <button onClick={() => handleDelete(r.id)} className="text-[#5D6B85] hover:text-rose-400 transition-colors" title="Delete Record">
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                ),
+              },
+            ]}
+            rows={rows}
+            rowOffset={(pagination.page - 1) * pagination.limit}
+          />
+          <Pagination page={pagination.page} totalPages={pagination.total_pages} total={pagination.total} limit={pagination.limit} onPageChange={(page) => setPagination((current) => ({ ...current, page }))} onLimitChange={(limit) => setPagination((current) => ({ ...current, page: 1, limit }))} />
+        </>
       )}
 
       <Modal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} title="Create Stock Out">
         <StockOutForm onSubmit={handleAdd} onClose={() => setIsAddOpen(false)} products={products} submitting={submitting} />
+      </Modal>
+
+      <Modal isOpen={!!editingRow} onClose={() => setEditingRow(null)} title="Edit Stock Out">
+        {editingRow && (
+          <StockOutForm
+            onSubmit={handleUpdate}
+            onClose={() => setEditingRow(null)}
+            products={products}
+            submitting={submitting}
+            submitLabel="Save Changes"
+            initialValues={{
+              product: editingRow.product,
+              batch_number: editingRow.batch_number,
+              quantity: editingRow.quantity,
+              reason: editingRow.reason,
+              reference_number: editingRow.reference_number || "",
+              transaction_date: editingRow.transaction_date,
+            }}
+          />
+        )}
       </Modal>
     </div>
   );

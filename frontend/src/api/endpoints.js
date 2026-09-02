@@ -65,6 +65,7 @@ export const stockApi = {
     //   { product_id, batch_number, manufacture_date, expiry_date, quantity, unit_price }
     // ] }
     create: (data, config) => axiosClient.post("/stock/in", data, config),
+    update: (id, data, config) => axiosClient.put(`/stock/in/${id}`, data, config),
     remove: (id) => axiosClient.delete(`/stock/in/${id}`),
   },
   stockOut: {
@@ -73,6 +74,7 @@ export const stockApi = {
     //   { product_id, batch_id, quantity }
     // ] }
     create: (data, config) => axiosClient.post("/stock/out", data, config),
+    update: (id, data, config) => axiosClient.put(`/stock/out/${id}`, data, config),
     remove: (id) => axiosClient.delete(`/stock/out/${id}`),
   },
   // Aggregated available_quantity per product, from PRODUCT_BATCHES
@@ -100,6 +102,7 @@ export const settingsApi = {
   updatePreferences: (data) => axiosClient.put("/settings/preferences", data),
   updatePassword: (data) => axiosClient.put("/settings/password", data),
   updateTwoFactor: (enabled) => axiosClient.put("/settings/two-factor", { enabled }),
+  getActivityLog: () => api.get("/settings/activity-log"), // add this
 };
 
 // Add this export to your existing api/endpoints.js (next to usersApi)

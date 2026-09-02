@@ -92,13 +92,10 @@ function mapSupplierToApi(form) {
   };
 }
 
-// function SupplierForm({ initialData, onSubmit, onClose, submitting }) {
-//   const [formData, setFormData] = useState(
-//     initialData || { code: "", name: "", contact: "", phone: "", email: "", address: "", status: "" }
-//   );
-// }
-
-function SupplierForm({ initialData, onSubmit, onClose, submitting, formId }) {
+// SupplierForm no longer renders its own Cancel/Save buttons — those live in
+// FormModal's footer and submit this form remotely via the `form={formId}`
+// attribute, so we need to give the <form> element that same id.
+function SupplierForm({ initialData, onSubmit, formId }) {
   const [formData, setFormData] = useState(
     initialData || { code: "", name: "", contact: "", phone: "", email: "", address: "", status: "active" }
   );
@@ -141,7 +138,7 @@ function SupplierForm({ initialData, onSubmit, onClose, submitting, formId }) {
     }`;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form id={formId} onSubmit={handleSubmit} className="space-y-4">
       <FormInput label="Supplier Code" required type="text" minLength={2} maxLength={30} pattern="[A-Za-z0-9_-]+" title="Use letters, numbers, hyphens, or underscores only." placeholder="e.g. SUP-1001" value={formData.code} onChange={(e) => setFormData({ ...formData, code: e.target.value })} />
       <FormInput label="Supplier Name" required type="text" minLength={2} maxLength={100} placeholder="e.g. MedSupply Co." value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
 
@@ -160,23 +157,6 @@ function SupplierForm({ initialData, onSubmit, onClose, submitting, formId }) {
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
       </FormSelect>
-
-      <div className="flex justify-end gap-3 pt-2">
-        <button
-          type="button"
-          onClick={onClose}
-          className="px-4 py-2 border border-[#1E2A45] text-[#8B96AE] hover:text-[#E7ECF6] hover:bg-white/[0.02] text-sm font-medium rounded-lg transition-colors"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          disabled={submitting}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors"
-        >
-          {submitting ? "Saving..." : "Save Vendor"}
-        </button>
-      </div>
     </form>
   );
 }
@@ -350,7 +330,6 @@ function Suppliers({ navigationFilters = {} }) {
         <SupplierForm
           formId="add-supplier-form"
           onSubmit={handleAddSupplier}
-          onClose={() => setIsAddOpen(false)}
           submitting={submitting}
         />
       </FormModal>
@@ -385,7 +364,6 @@ function Suppliers({ navigationFilters = {} }) {
             formId="edit-supplier-form"
             initialData={editingSupplier}
             onSubmit={handleEditSupplier}
-            onClose={() => setEditingSupplier(null)}
             submitting={submitting}
           />
         )}

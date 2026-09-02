@@ -1,10 +1,5 @@
-/* eslint-disable no-empty -- mutation errors are displayed by the global API interceptor */
-// StockIn.jsx — Stock Management > Stock In
-// Creates a STOCK_TRANSACTION (transaction_type = "stock_in") that receives
-// a new PRODUCT_BATCH: batch_number, manufacture_date, expiry_date,
-// received_quantity, purchase_price, tied to a supplier and reference_number.
 import { useEffect, useState } from "react";
-import { Trash2, Download } from "lucide-react";
+import { Trash2, Download, Pencil } from "lucide-react";
 import { stockApi, productsApi, suppliersApi } from "../../api/endpoints";
 import {
   PageHeader, Badge, Table, Toolbar, Modal, FormInput, FormSelect, FormDatePicker,
@@ -15,36 +10,42 @@ import Swal from 'sweetalert2';
 import { toast } from "../../utils/toast";
 
 const CSV_HEADERS = [
-  "Product", "Supplier", "Batch Number", "Manufacture Date", "Expiry Date",
-  "Received Quantity", "purchase_price", "reference_number", "transaction_date",
+  "Product", "Supplier", "Batch No.", "Manufacture Date", "Expiry Date",
+  "Qty Received", "Purchase Price", "Reference No.", "Date",
 ];
 
-function StockInForm({ onSubmit, onClose, products, suppliers, submitting }) {
-  const [form, setForm] = useState({
-    product: "",
-    supplier: "",
-    batch_number: "",
-    manufacture_date: "",
-    expiry_date: "",
-    received_quantity: "",
-    purchase_price: "",
-    reference_number: "",
-    transaction_date: new Date().toISOString().slice(0, 10),
-  });
+function StockInForm({ onSubmit, onClose, products, suppliers, submitting, initialValues, submitLabel }) {
+  const [form, setForm] = useState(() => ({
+    product: initialValues?.product || "",
+    supplier: initialValues?.supplier || "",
+    batch_number: initialValues?.batch_number || "",
+    manufacture_date: initialValues?.manufacture_date || "",
+    expiry_date: initialValues?.expiry_date || "",
+    received_quantity: initialValues?.received_quantity ?? "",
+    purchase_price: initialValues?.purchase_price ?? "",
+    reference_number: initialValues?.reference_number || "",
+    transaction_date: initialValues?.transaction_date || new Date().toISOString().slice(0, 10),
+  }));
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit({ ...form, batch_number: form.batch_number.trim(), reference_number: form.reference_number.trim(), received_quantity: Number(form.received_quantity), purchase_price: Number(form.purchase_price) });
+    onSubmit({
+      ...form,
+      batch_number: form.batch_number.trim(),
+      reference_number: form.reference_number.trim(),
+      received_quantity: Number(form.received_quantity),
+      purchase_price: Number(form.purchase_price),
+    });
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <FormSelect label="Product" required placeholder="Select a product" value={form.product} onChange={(e) => setForm({ ...form, product: e.target.value })}>
-            {products.map((p) => <option key={p.id} value={p.product_name}>{p.product_name}</option>)}
+          {products.map((p) => <option key={p.id} value={p.product_name}>{p.product_name}</option>)}
         </FormSelect>
         <FormSelect label="Supplier" placeholder="Select a supplier (optional)" value={form.supplier} onChange={(e) => setForm({ ...form, supplier: e.target.value })}>
-            {suppliers.map((s) => <option key={s.id} value={s.supplier_name}>{s.supplier_name}</option>)}
+          {suppliers.map((s) => <option key={s.id} value={s.supplier_name}>{s.supplier_name}</option>)}
         </FormSelect>
       </div>
       <div className="grid grid-cols-2 gap-4">
@@ -65,7 +66,7 @@ function StockInForm({ onSubmit, onClose, products, suppliers, submitting }) {
           Cancel
         </button>
         <button type="submit" disabled={submitting} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors">
-          {submitting ? "Saving..." : "Create Stock In"}
+          {submitting ? "Saving..." : (submitLabel || "Create Stock In")}
         </button>
       </div>
     </form>
@@ -81,6 +82,7 @@ function StockIn({ navigationFilters = {} }) {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [editingRow, setEditingRow] = useState(null); // null = add mode, object = edit mode
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, total_pages: 1 });
 
   useEffect(() => {
@@ -130,8 +132,20 @@ function StockIn({ navigationFilters = {} }) {
     }
   };
 
+  const handleUpdate = async (form) => {
+    setSubmitting(true);
+    try {
+      await stockApi.stockIn.update(editingRow.id, form);
+      setEditingRow(null);
+      await loadRows(query || undefined);
+    } catch {
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleDelete = async (id) => {
-     const result = await Swal.fire({
+    const result = await Swal.fire({
       title: "Are you sure?",
       text: "You want to delete this record!",
       background: "#0B1220",
@@ -141,47 +155,24 @@ function StockIn({ navigationFilters = {} }) {
       confirmButtonColor: "#3085d6",
       cancelButtonColor: "#d33",
       confirmButtonText: "Yes, delete it!",
-      showClass: {
-        popup: `
-          animate__animated
-          animate__fadeInUp
-          animate__faster
-        `,
-      },
-      hideClass: {
-        popup: `
-          animate__animated
-          animate__fadeOutDown
-          animate__faster
-        `,
-      },
+      showClass: { popup: `animate__animated animate__fadeInUp animate__faster` },
+      hideClass: { popup: `animate__animated animate__fadeOutDown animate__faster` },
     });
 
-    // Cancel or dismiss (clicking outside, Esc) both land here and just stop
     if (!result.isConfirmed) return;
 
     try {
       await stockApi.stockIn.remove(id);
       await loadRows(query || undefined);
-
     } catch {
     }
-    // if (!confirm("Remove this stock-in record?")) return;
-    // try {
-    //   await stockApi.stockIn.remove(id);
-    //   await loadRows(query || undefined);
-    // } catch (err) {
-    //   alert(err.message);
-    // }
   };
 
   const handleExport = () => {
-    downloadExcel(
+    downloadXlsx(
       "stock-in.xlsx",
-      "Stock In",
-      ["Product", "Supplier", "Batch No.", "Manufacture Date", "Expiry Date", "Qty Received", "Purchase Price", "Reference No.", "Date"],
+      CSV_HEADERS,
       rows.map((r) => [r.product, r.supplier, r.batch_number, r.manufacture_date, r.expiry_date, r.received_quantity, Number(r.purchase_price || 0), r.reference_number, r.transaction_date]),
-      (pagination.page - 1) * pagination.limit
     );
   };
 
@@ -223,7 +214,7 @@ function StockIn({ navigationFilters = {} }) {
           <>
             <ImportButton label="Import Stock In" onImport={handleImport} />
             <ActionButton icon={Download} label="Export Stock In" onClick={handleExport} />
-            <ActionButton icon={Download} label="Download Template" onClick={() => downloadXlsxTemplate("stock-in.xlsx", CSV_HEADERS)}/>
+            <ActionButton icon={Download} label="Download Template" onClick={() => downloadXlsxTemplate("stock-in.xlsx", CSV_HEADERS)} />
           </>
         }
       />
@@ -232,34 +223,66 @@ function StockIn({ navigationFilters = {} }) {
       {loading ? (
         <p className="text-sm text-[#8B96AE]">Loading stock-in records...</p>
       ) : (
-        <><Table
-          columns={[
-            { key: "product", label: "Product" },
-            { key: "supplier", label: "Supplier", render: (r) => r.supplier || "—" },
-            { key: "batch_number", label: "Batch No." },
-            { key: "expiry_date", label: "Expiry Date", render: (r) => r.expiry_date || "—" },
-            { key: "received_quantity", label: "Qty Received", render: (r) => <Badge tone="good">+{r.received_quantity}</Badge> },
-            { key: "purchase_price", label: "Purchase Price", render: (r) => `$${Number(r.purchase_price || 0).toFixed(2)}` },
-            { key: "reference_number", label: "Reference No.", render: (r) => r.reference_number || "—" },
-            { key: "transaction_date", label: "Date" },
-            {
-              key: "actions",
-              label: "Actions",
-              render: (r) => (
-                <button onClick={() => handleDelete(r.id)} className="text-[#5D6B85] hover:text-rose-400 transition-colors" title="Delete Record">
-                  <Trash2 size={15} />
-                </button>
-              ),
-            },
-          ]}
-          rows={rows}
-          rowOffset={(pagination.page - 1) * pagination.limit}
-        />
-        <Pagination page={pagination.page} totalPages={pagination.total_pages} total={pagination.total} limit={pagination.limit} onPageChange={(page) => setPagination((current) => ({ ...current, page }))} onLimitChange={(limit) => setPagination((current) => ({ ...current, page: 1, limit }))} /></>
+        <>
+          <Table
+            columns={[
+              { key: "product", label: "Product" },
+              { key: "supplier", label: "Supplier", render: (r) => r.supplier || "—" },
+              { key: "batch_number", label: "Batch No." },
+              { key: "manufacture_date", label: "Manufacture Date", render: (r) => r.manufacture_date || "-"},
+              { key: "expiry_date", label: "Expiry Date", render: (r) => r.expiry_date || "—" },
+              { key: "received_quantity", label: "Qty Received", render: (r) => <Badge tone="good">+{r.received_quantity}</Badge> },
+              { key: "purchase_price", label: "Purchase Price", render: (r) => `$${Number(r.purchase_price || 0).toFixed(2)}` },
+              { key: "reference_number", label: "Reference No.", render: (r) => r.reference_number || "—" },
+              { key: "transaction_date", label: "Transition Date" },
+              {
+                key: "actions",
+                label: "Actions",
+                render: (r) => (
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => setEditingRow(r)} className="text-[#5D6B85] hover:text-blue-400 transition-colors" title="Edit Record">
+                      <Pencil size={15} />
+                    </button>
+                    <button onClick={() => handleDelete(r.id)} className="text-[#5D6B85] hover:text-rose-400 transition-colors" title="Delete Record">
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                ),
+              },
+            ]}
+            rows={rows}
+            rowOffset={(pagination.page - 1) * pagination.limit}
+          />
+          <Pagination page={pagination.page} totalPages={pagination.total_pages} total={pagination.total} limit={pagination.limit} onPageChange={(page) => setPagination((current) => ({ ...current, page }))} onLimitChange={(limit) => setPagination((current) => ({ ...current, page: 1, limit }))} />
+        </>
       )}
 
       <Modal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} title="Create Stock In">
         <StockInForm onSubmit={handleAdd} onClose={() => setIsAddOpen(false)} products={products} suppliers={suppliers} submitting={submitting} />
+      </Modal>
+
+      <Modal isOpen={!!editingRow} onClose={() => setEditingRow(null)} title="Edit Stock In">
+        {editingRow && (
+          <StockInForm
+            onSubmit={handleUpdate}
+            onClose={() => setEditingRow(null)}
+            products={products}
+            suppliers={suppliers}
+            submitting={submitting}
+            submitLabel="Save Changes"
+            initialValues={{
+              product: editingRow.product,
+              supplier: editingRow.supplier || "",
+              batch_number: editingRow.batch_number,
+              manufacture_date: editingRow.manufacture_date || "",
+              expiry_date: editingRow.expiry_date || "",
+              received_quantity: editingRow.received_quantity,
+              purchase_price: editingRow.purchase_price,
+              reference_number: editingRow.reference_number || "",
+              transaction_date: editingRow.transaction_date,
+            }}
+          />
+        )}
       </Modal>
     </div>
   );

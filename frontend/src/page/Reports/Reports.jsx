@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, Download, FileSpreadsheet } from "lucide-react";
 import { reportsApi } from "../../api/endpoints";
 import { Card, FormDatePicker, PageHeader, Table } from "../../components/ui/Common";
-import { downloadExcel } from "../../utils/ExportUtils";
+import { downloadExcel, downloadXlsx } from "../../utils/ExportUtils";
 import { toast } from "../../utils/toast";
 
 const REPORT_TYPES = [
@@ -108,14 +108,39 @@ export default function Reports() {
     return () => { active = false; clearTimeout(timeout); controller.abort(); };
   }, [reportType, dateFrom, dateTo]);
 
+  // const handleGenerate = async () => {
+  //   setGenerating(true);
+  //   try {
+  //     const latestRecords = await fetchReport();
+  //     if (!latestRecords) return;
+  //     const excelRows = latestRecords.map((record) => definition.columns.map(([key]) => displayValue(record[key], key)));
+  //     const suffix = dateFrom || dateTo ? `-${dateFrom || "start"}-to-${dateTo || "today"}` : "";
+  //     downloadXlsx(`${reportType}${suffix}.xlsx`, definition.label, definition.columns.map(([, label]) => label), excelRows);
+  //     toast.success(`${definition.label} report generated.`);
+  //   } catch (requestError) {
+  //     setError(requestError.message);
+  //   } finally {
+  //     setGenerating(false);
+  //   }
+  // };
+
   const handleGenerate = async () => {
     setGenerating(true);
     try {
       const latestRecords = await fetchReport();
       if (!latestRecords) return;
-      const excelRows = latestRecords.map((record) => definition.columns.map(([key]) => displayValue(record[key], key)));
+      const excelRows = latestRecords.map((record) =>
+        definition.columns.map(([key]) => displayValue(record[key], key))
+      );
       const suffix = dateFrom || dateTo ? `-${dateFrom || "start"}-to-${dateTo || "today"}` : "";
-      downloadExcel(`${reportType}${suffix}.xlsx`, definition.label, definition.columns.map(([, label]) => label), excelRows);
+
+      downloadXlsx(
+        `${reportType}${suffix}.xlsx`,                     // filename
+        definition.columns.map(([, label]) => label),      // headers
+        excelRows,                                          // rows
+        definition.label                                    // sheetName
+      );
+
       toast.success(`${definition.label} report generated.`);
     } catch (requestError) {
       setError(requestError.message);
