@@ -20,7 +20,7 @@ function RegisterLogin({ onLogin }) {
         <div className="bg-[#141E33] border border-[#1E2A45] rounded-xl shadow-2xl">
           <form onSubmit={handleSubmit} className="p-7">
             <div className="flex items-center gap-2 justify-center mb-8">
-              <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center">
+              <div className="w-9 h-9 rounded-lg bg-teal-500 flex items-center justify-center">
                 <Stethoscope size={18} className="text-white" />
               </div>
               <span className="text-xl font-semibold text-[#E7ECF6] tracking-tight">Medicine Inventory System</span>
@@ -44,7 +44,7 @@ function RegisterLogin({ onLogin }) {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-[#0F1626] border border-[#1E2A45] rounded-lg pl-9 pr-3 py-2.5 text-sm text-[#E7ECF6] focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/50"
+                    className="w-full bg-[#0F1626] border border-[#1E2A45] rounded-lg pl-9 pr-3 py-2.5 text-sm text-[#E7ECF6] focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500/50"
                   />
                 </div>
               </div>
@@ -57,7 +57,7 @@ function RegisterLogin({ onLogin }) {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-[#0F1626] border border-[#1E2A45] rounded-lg pl-9 pr-9 py-2.5 text-sm text-[#E7ECF6] focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/50"
+                    className="w-full bg-[#0F1626] border border-[#1E2A45] rounded-lg pl-9 pr-9 py-2.5 text-sm text-[#E7ECF6] focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500/50"
                   />
                   <button
                     type="button"
@@ -76,7 +76,7 @@ function RegisterLogin({ onLogin }) {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-60 disabled:cursor-not-allowed transition-colors text-white text-sm font-medium py-2.5 rounded-lg"
+                className="w-full bg-teal-500 hover:bg-teal-600 disabled:opacity-60 disabled:cursor-not-allowed transition-colors text-white text-sm font-medium py-2.5 rounded-lg"
               >
                 {loading ? "Signing in..." : "Sign in"}
               </button>

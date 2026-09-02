@@ -21,7 +21,7 @@ const normalizeProfile = (user = {}) => ({
 
 function roleAppearance(role = "") {
   const value = String(role).toLowerCase();
-  if (value.includes("admin") || value.includes("owner")) return { label: "Administrator", avatar: "bg-blue-50 text-blue-600 ring-blue-100", badge: "bg-blue-50 text-blue-700 ring-blue-200" };
+  if (value.includes("admin") || value.includes("owner")) return { label: "Administrator", avatar: "bg-teal-50 text-teal-600 ring-teal-100", badge: "bg-teal-50 text-teal-700 ring-teal-200" };
   if (value.includes("pharmacist")) return { label: "Pharmacist", avatar: "bg-emerald-50 text-emerald-600 ring-emerald-100", badge: "bg-emerald-50 text-emerald-700 ring-emerald-200" };
   if (value.includes("stock")) return { label: "Stock Staff", avatar: "bg-orange-100 text-orange-700 ring-orange-200", badge: "bg-orange-50 text-orange-700 ring-orange-200" };
   return { label: role || "Stock Staff", avatar: "bg-slate-100 text-slate-500 ring-slate-200", badge: "bg-slate-100 text-slate-600 ring-slate-200" };

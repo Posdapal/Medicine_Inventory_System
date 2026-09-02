@@ -65,7 +65,7 @@ function StockInForm({ onSubmit, onClose, products, suppliers, submitting }) {
         <button type="button" onClick={onClose} className="px-4 py-2 border border-[#1E2A45] text-[#8B96AE] hover:text-[#E7ECF6] hover:bg-white/[0.02] text-sm font-medium rounded-lg transition-colors">
           Cancel
         </button>
-        <button type="submit" disabled={submitting} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors">
+        <button type="submit" disabled={submitting} className="px-4 py-2 bg-teal-500 hover:bg-teal-600 disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors">
           {submitting ? "Saving..." : "Create Stock In"}
         </button>
       </div>

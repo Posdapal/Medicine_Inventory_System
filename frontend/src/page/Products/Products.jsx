@@ -141,7 +141,7 @@ function ProductForm({ initialData, onSubmit, onClose, categories, units, submit
           Cancel
         </button>
         <button type="submit" disabled={submitting}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors">
+          className="px-4 py-2 bg-teal-500 hover:bg-teal-600 disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors">
           {submitting ? "Saving..." : "Save Product"}
         </button>
       </div>
@@ -348,7 +348,7 @@ function Products({ navigationFilters = {} }) {
               label: "Actions",
               render: (r) => (
                 <div className="flex items-center gap-3">
-                  {canUpdate && <button onClick={() => setEditingProduct(r)} className="text-[#5D6B85] hover:text-blue-400 transition-colors" title="Edit Product">
+                  {canUpdate && <button onClick={() => setEditingProduct(r)} className="text-[#5D6B85] hover:text-teal-400 transition-colors" title="Edit Product">
                     <Edit2 size={15} />
                   </button>}
                   {canDelete && <button onClick={() => handleDeleteProduct(r.id)} className="text-[#5D6B85] hover:text-rose-400 transition-colors" title="Delete Product">

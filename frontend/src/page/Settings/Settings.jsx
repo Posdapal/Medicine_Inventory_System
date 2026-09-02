@@ -6,20 +6,10 @@ import { settingsApi } from "../../api/endpoints";
 import { useAuth } from "../../context/AuthContext";
 import { ThemeCotext } from "../../context/ThemeContextProvider";
 import { Alert, Badge, Button, Card, ChecklistItem, Input, Tabs } from "../../components/ui/Primitives";
+import { FormSelect } from "../../components/ui/Common";
 
 function SelectField({ label, value, onChange, children }) {
-  return (
-    <label className="block">
-      <span className="mb-2 block text-sm font-medium text-slate-200">{label}</span>
-      <select
-        value={value}
-        onChange={onChange}
-        className="min-h-12 w-full rounded-xl border border-slate-700/80 bg-slate-800/70 px-4 text-sm text-slate-100 outline-none transition hover:border-slate-600 focus:border-teal-400/70 focus:ring-4 focus:ring-teal-400/10"
-      >
-        {children}
-      </select>
-    </label>
-  );
+  return <FormSelect label={label} value={value} onChange={onChange} className="min-h-12 rounded-xl px-4">{children}</FormSelect>;
 }
 
 function Toggle({ checked, onChange, label, description }) {

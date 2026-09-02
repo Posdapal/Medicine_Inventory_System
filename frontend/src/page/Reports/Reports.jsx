@@ -28,7 +28,7 @@ function ReportTypeSelect({ value, onChange }) {
     <div>
       <label className="mb-1.5 block text-sm font-medium text-[#8B96AE]">Report Type <span className="text-rose-400">*</span></label>
       <details ref={menuRef} className="group relative z-30 open:z-50">
-        <summary className="flex h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-xl border border-[#2A3A5A] bg-[#0F1626] px-3.5 text-sm font-semibold text-[#E7ECF6] shadow-sm transition hover:border-blue-500/60 hover:bg-blue-500/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40">
+        <summary className="flex h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-xl border border-[#2A3A5A] bg-[#0F1626] px-3.5 text-sm font-semibold text-[#E7ECF6] shadow-sm transition hover:border-teal-500/60 hover:bg-teal-500/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40">
           <span className="flex min-w-0 items-center gap-2.5"><FileSpreadsheet size={17} className="shrink-0 text-emerald-400" /><span className="truncate">{selected.label}</span></span>
           <ChevronDown size={16} className="shrink-0 text-[#7D8AA3] transition-transform group-open:rotate-180" />
         </summary>
@@ -37,7 +37,7 @@ function ReportTypeSelect({ value, onChange }) {
           <div className="max-h-72 overflow-y-auto pr-1">
             {REPORT_TYPES.map((type) => {
               const active = type.value === value;
-              return <button key={type.value} type="button" onClick={() => { onChange(type.value); menuRef.current?.removeAttribute("open"); }} className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm font-medium transition ${active ? "bg-blue-500/15 text-blue-300" : "text-[#D7DEEB] hover:bg-white/[0.05]"}`}><span>{type.label}</span>{active && <Check size={15} />}</button>;
+              return <button key={type.value} type="button" onClick={() => { onChange(type.value); menuRef.current?.removeAttribute("open"); }} className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm font-medium transition ${active ? "bg-teal-500/15 text-teal-300" : "text-[#D7DEEB] hover:bg-white/[0.05]"}`}><span>{type.label}</span>{active && <Check size={15} />}</button>;
             })}
           </div>
         </div>

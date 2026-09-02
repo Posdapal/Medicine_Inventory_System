@@ -1,10 +1,10 @@
 /* eslint-disable no-empty -- mutation errors are displayed by the global API interceptor */
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Search, Plus, Trash2, X, Edit2, Eye, EyeOff } from "lucide-react";
+import { Search, Plus, Trash2, X, Edit2, Eye, EyeOff, ChevronDown, Check } from "lucide-react";
 import { usersApi, rolesApi } from "../../api/endpoints";
 import Swal from "sweetalert2";
-import { FormInput, FormSelect, Pagination, Table } from "../../components/ui/Common";
+import { FormField, FormInput, Pagination, Table } from "../../components/ui/Common";
 
 const normalizeRole = (role) => ({
   id: String(role.id ?? role.role_id ?? ""),
@@ -37,13 +37,13 @@ function Toolbar({ query, setQuery, placeholder, onAdd, addLabel }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={placeholder}
-          className="w-full bg-[#0F1626] border border-[#1E2A45] rounded-lg pl-9 pr-3 py-2 text-sm text-[#E7ECF6] placeholder-[#5D6B85] focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/50"
+          className="w-full bg-[#0F1626] border border-[#1E2A45] rounded-lg pl-9 pr-3 py-2 text-sm text-[#E7ECF6] placeholder-[#5D6B85] focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500/50"
         />
       </div>
       {onAdd && (
         <button
           onClick={onAdd}
-          className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 transition-colors text-white text-sm font-medium px-3.5 py-2 rounded-lg"
+          className="flex items-center gap-1.5 bg-teal-500 hover:bg-teal-600 transition-colors text-white text-sm font-medium px-3.5 py-2 rounded-lg"
         >
           <Plus size={15} /> {addLabel}
         </button>
@@ -58,7 +58,7 @@ function Badge({ children, tone = "neutral" }) {
     good: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
     warn: "bg-amber-500/10 text-amber-400 border-amber-500/30",
     bad: "bg-rose-500/10 text-rose-400 border-rose-500/30",
-    info: "bg-blue-500/10 text-blue-400 border-blue-500/30",
+    info: "bg-teal-500/10 text-teal-400 border-teal-500/30",
   };
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${tones[tone]}`}>
@@ -73,10 +73,10 @@ function Modal({ isOpen, onClose, title, children, wide }) {
     <>
       <div className="fixed left-0 top-0 z-[9998] h-[100dvh] w-screen bg-black/45" aria-hidden="true" />
       <div className={`fixed bottom-0 right-0 top-0 z-[9999] flex items-center justify-center p-4 ${wide ? "left-[var(--app-sidebar-width)]" : "left-0"}`}>
-        <div className={`flex max-h-[92vh] w-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl ${wide ? "max-w-[1280px]" : "max-w-md"}`}>
-          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-            <h3 className="text-lg font-medium text-slate-900">{title}</h3>
-            <button onClick={onClose} className="text-slate-400 transition-colors hover:text-slate-700">
+        <div className={`flex max-h-[92vh] w-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-900 shadow-2xl dark:border-[#1E293B] dark:bg-[#0F172A] dark:text-[#E2E8F0] ${wide ? "max-w-[1280px]" : "max-w-[480px]"}`}>
+          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-[#1E293B]">
+            <h3 className="text-lg font-medium text-slate-900 dark:text-[#E2E8F0]">{title}</h3>
+            <button onClick={onClose} className="text-slate-400 transition-colors hover:text-slate-700 dark:text-[#94A3B8] dark:hover:text-[#E2E8F0]">
               <X size={18} />
             </button>
           </div>
@@ -98,6 +98,112 @@ function mapUserFromApi(u) {
     roleId: normalizeRoleId(u.role_id ?? u.roleId),
     status: u.status,
   };
+}
+
+function CustomSelect({ label, required = false, placeholder, error, value, options, onChange }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const containerRef = useRef(null);
+  const listboxId = useId();
+  const selectedIndex = options.findIndex((option) => String(option.value) === String(value));
+  const selectedOption = selectedIndex >= 0 ? options[selectedIndex] : null;
+
+  useEffect(() => {
+    const closeOnOutsideClick = (event) => {
+      if (!containerRef.current?.contains(event.target)) setIsOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    return () => document.removeEventListener("pointerdown", closeOnOutsideClick);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) setActiveIndex(selectedIndex >= 0 ? selectedIndex : 0);
+  }, [isOpen, selectedIndex]);
+
+  const selectOption = (option) => {
+    if (!option) return;
+    onChange(option.value);
+    setIsOpen(false);
+  };
+
+  const handleKeyDown = (event) => {
+    if (event.key === "Escape" || event.key === "Tab") {
+      setIsOpen(false);
+      return;
+    }
+    if (!options.length) return;
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      if (!isOpen) {
+        setIsOpen(true);
+        return;
+      }
+      const direction = event.key === "ArrowDown" ? 1 : -1;
+      setActiveIndex((current) => (current + direction + options.length) % options.length);
+      return;
+    }
+    if (isOpen && (event.key === "Enter" || event.key === " ")) {
+      event.preventDefault();
+      selectOption(options[activeIndex]);
+      return;
+    }
+    if (isOpen && (event.key === "Home" || event.key === "End")) {
+      event.preventDefault();
+      setActiveIndex(event.key === "Home" ? 0 : options.length - 1);
+    }
+  };
+
+  return (
+    <FormField label={label} required={required} error={error} errorId={error ? `${listboxId}-error` : undefined}>
+      <div ref={containerRef} className="relative">
+        <button
+          type="button"
+          role="combobox"
+          aria-label={label}
+          aria-required={required}
+          aria-controls={listboxId}
+          aria-expanded={isOpen}
+          aria-haspopup="listbox"
+          aria-activedescendant={isOpen ? `${listboxId}-option-${activeIndex}` : undefined}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? `${listboxId}-error` : undefined}
+          disabled={!options.length}
+          onClick={() => setIsOpen((open) => !open)}
+          onKeyDown={handleKeyDown}
+          className={`flex w-full items-center justify-between rounded-lg border bg-white px-3 py-2 text-left text-sm transition focus:outline-none focus:ring-2 focus:ring-[#14B8A6]/20 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#111827] ${error ? "border-rose-500/70" : "border-slate-300 focus:border-[#14B8A6] dark:border-[#334155] dark:focus:border-[#14B8A6]"}`}
+        >
+          <span className={selectedOption ? "text-[#334155] dark:text-[#F8FAFC]" : "text-slate-400 dark:text-[#94A3B8]"}>
+            {selectedOption?.label || placeholder}
+          </span>
+          <ChevronDown size={16} className={`text-[#64748B] transition-transform dark:text-[#94A3B8] ${isOpen ? "rotate-180" : ""}`} aria-hidden="true" />
+        </button>
+
+        {isOpen && (
+          <div id={listboxId} role="listbox" aria-label={label} className="absolute left-0 top-full z-40 mt-1.5 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white p-1.5 shadow-xl shadow-slate-300/40 dark:border-[#334155] dark:bg-[#111827] dark:shadow-black/30">
+            {options.map((option, index) => {
+              const isSelected = String(option.value) === String(value);
+              const isActive = index === activeIndex;
+              return (
+                <button
+                  id={`${listboxId}-option-${index}`}
+                  key={option.value}
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
+                  onMouseEnter={() => setActiveIndex(index)}
+                  onClick={() => selectOption(option)}
+                  className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm font-medium transition-colors ${isSelected ? "bg-[#14B8A6] text-white" : isActive ? "bg-[#CCFBF1] text-[#0F766E]" : "bg-transparent text-[#334155] dark:text-[#CBD5E1]"}`}
+                >
+                  <span>{option.label}</span>
+                  {isSelected && <Check size={15} aria-hidden="true" />}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </FormField>
+  );
 }
 
 // UserForm doubles as add + edit. Password is only collected (and sent) on create,
@@ -154,7 +260,7 @@ function UserForm({ initialData, onSubmit, onClose, submitting, roles }) {
               aria-label={showPassword ? "Hide temporary password" : "Show temporary password"}
               aria-pressed={showPassword}
               title={showPassword ? "Hide password" : "Show password"}
-              className="rounded-md p-1 text-[#697791] transition hover:bg-slate-200/60 hover:text-blue-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 dark:hover:bg-white/[0.06]"
+              className="rounded-md p-1 text-[#697791] transition hover:bg-slate-200/60 hover:text-teal-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40 dark:hover:bg-white/[0.06]"
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
@@ -163,35 +269,32 @@ function UserForm({ initialData, onSubmit, onClose, submitting, roles }) {
       )}
 
       <div className="grid grid-cols-2 gap-4">
-        <FormSelect label="Role" required placeholder="Select a role" error={roleError}
+        <CustomSelect label="Role" required placeholder="Select a role" error={roleError}
             value={selectedRoleId}
-            onChange={(e) => { setRoleError(""); setFormData({ ...formData, roleId: e.target.value }); }}
-          >
-            {roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
-        </FormSelect>
-        <FormSelect label="Status" required placeholder="Select a status"
+            options={roles.map((role) => ({ value: role.id, label: role.name }))}
+            onChange={(value) => { setRoleError(""); setFormData({ ...formData, roleId: value }); }}
+        />
+        <CustomSelect label="Status" required placeholder="Select a status"
             value={formData.status}
-            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-          >
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-        </FormSelect>
+            options={[{ value: "active", label: "Active" }, { value: "inactive", label: "Inactive" }]}
+            onChange={(value) => setFormData({ ...formData, status: value })}
+        />
       </div>
 
       <div className="flex justify-end gap-3 pt-2">
         <button
           type="button"
           onClick={onClose}
-          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900"
+          className="rounded-lg border border-slate-300 bg-transparent px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 dark:border-[#334155] dark:text-[#CBD5E1] dark:hover:bg-[#111827] dark:hover:text-[#F8FAFC]"
         >
           Cancel
         </button>
         <button
           type="submit"
           disabled={submitting}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors"
+          className="rounded-lg bg-[#14B8A6] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0F9D8A] disabled:opacity-60"
         >
-          {submitting ? "Saving..." : "Save User"}
+          {submitting ? "Saving..." : "Save"}
         </button>
       </div>
     </form>
@@ -343,7 +446,7 @@ function Users({ navigationFilters = {} }) {
               label: "Actions",
               render: (r) => (
                 <div className="flex items-center gap-3">
-                  <button onClick={() => setEditingUser(r)} className="text-[#5D6B85] hover:text-blue-400 transition-colors" title="Edit User">
+                  <button onClick={() => setEditingUser(r)} className="text-[#5D6B85] hover:text-teal-400 transition-colors" title="Edit User">
                     <Edit2 size={15} />
                   </button>
                   <button onClick={() => handleDeleteUser(r.id)} className="text-[#5D6B85] hover:text-rose-400 transition-colors" title="Delete User">
@@ -360,7 +463,7 @@ function Users({ navigationFilters = {} }) {
         </>
       )}
 
-      <Modal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} title="Create New System User">
+      <Modal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} title="Create User">
         <UserForm roles={roles} onSubmit={handleAddUser} onClose={() => setIsAddOpen(false)} submitting={submitting} />
       </Modal>
 

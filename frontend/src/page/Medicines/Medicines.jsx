@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { Search, Plus, Trash2, X, Edit2 } from "lucide-react";
 import { medicinesApi, categoriesApi, suppliersApi } from "../../api/endpoints";
-import { Table } from "../../components/ui/Common";
+import { FormSelect, Table } from "../../components/ui/Common";
 import Swal from 'sweetalert2';
 
 function PageHeader({ title, subtitle, action }) {
@@ -26,13 +26,13 @@ function Toolbar({ query, setQuery, placeholder, onAdd, addLabel }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={placeholder}
-          className="w-full bg-[#0F1626] border border-[#1E2A45] rounded-lg pl-9 pr-3 py-2 text-sm text-[#E7ECF6] placeholder-[#5D6B85] focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/50"
+          className="w-full bg-[#0F1626] border border-[#1E2A45] rounded-lg pl-9 pr-3 py-2 text-sm text-[#E7ECF6] placeholder-[#5D6B85] focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500/50"
         />
       </div>
       {onAdd && (
         <button
           onClick={onAdd}
-          className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 transition-colors text-white text-sm font-medium px-3.5 py-2 rounded-lg"
+          className="flex items-center gap-1.5 bg-teal-500 hover:bg-teal-600 transition-colors text-white text-sm font-medium px-3.5 py-2 rounded-lg"
         >
           <Plus size={15} /> {addLabel}
         </button>
@@ -47,7 +47,7 @@ function Badge({ children, tone = "neutral" }) {
     good: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
     warn: "bg-amber-500/10 text-amber-400 border-amber-500/30",
     bad: "bg-rose-500/10 text-rose-400 border-rose-500/30",
-    info: "bg-blue-500/10 text-blue-400 border-blue-500/30",
+    info: "bg-teal-500/10 text-teal-400 border-teal-500/30",
   };
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${tones[tone]}`}>
@@ -141,23 +141,16 @@ function MedicineForm({ initialData, onSubmit, onClose, categories, suppliers, s
           placeholder="e.g. Amoxicillin 500 mg"
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          className="w-full bg-[#070B12] border border-[#1E2A45] rounded-lg px-3 py-2 text-sm text-[#E7ECF6] focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+          className="w-full bg-[#070B12] border border-[#1E2A45] rounded-lg px-3 py-2 text-sm text-[#E7ECF6] focus:outline-none focus:ring-2 focus:ring-teal-500/40"
         />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-xs font-medium text-[#8B96AE] uppercase mb-1.5">Category</label>
-          <select
-            value={formData.category}
-            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-            className="w-full bg-[#070B12] border border-[#1E2A45] rounded-lg px-3 py-2 text-sm text-[#E7ECF6] focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-          >
+        <FormSelect label="Category" value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })}>
             {categories.map((c) => (
               <option key={c.id} value={c.name}>{c.name}</option>
             ))}
-          </select>
-        </div>
+        </FormSelect>
         <div>
           <label className="block text-xs font-medium text-[#8B96AE] uppercase mb-1.5">Price ($) <span className="text-rose-400" aria-hidden="true">*</span></label>
           <input
@@ -168,24 +161,17 @@ function MedicineForm({ initialData, onSubmit, onClose, categories, suppliers, s
             placeholder="e.g. 12.50"
             value={formData.price}
             onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-            className="w-full bg-[#070B12] border border-[#1E2A45] rounded-lg px-3 py-2 text-sm text-[#E7ECF6] focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+            className="w-full bg-[#070B12] border border-[#1E2A45] rounded-lg px-3 py-2 text-sm text-[#E7ECF6] focus:outline-none focus:ring-2 focus:ring-teal-500/40"
           />
         </div>
       </div>
 
-      <div>
-        <label className="block text-xs font-medium text-[#8B96AE] uppercase mb-1.5">Supplier</label>
-        <select
-          value={formData.supplier}
-          onChange={(e) => setFormData({ ...formData, supplier: e.target.value })}
-          className="w-full bg-[#070B12] border border-[#1E2A45] rounded-lg px-3 py-2 text-sm text-[#E7ECF6] focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-        >
+      <FormSelect label="Supplier" value={formData.supplier} onChange={(e) => setFormData({ ...formData, supplier: e.target.value })}>
           <option value="">No supplier</option>
           {suppliers.map((s) => (
             <option key={s.id} value={s.name}>{s.name}</option>
           ))}
-        </select>
-      </div>
+      </FormSelect>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
@@ -197,7 +183,7 @@ function MedicineForm({ initialData, onSubmit, onClose, categories, suppliers, s
             placeholder="e.g. 100"
             value={formData.stock}
             onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-            className="w-full bg-[#070B12] border border-[#1E2A45] rounded-lg px-3 py-2 text-sm text-[#E7ECF6] focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+            className="w-full bg-[#070B12] border border-[#1E2A45] rounded-lg px-3 py-2 text-sm text-[#E7ECF6] focus:outline-none focus:ring-2 focus:ring-teal-500/40"
           />
         </div>
         <div>
@@ -209,7 +195,7 @@ function MedicineForm({ initialData, onSubmit, onClose, categories, suppliers, s
             placeholder="e.g. 20"
             value={formData.reorder}
             onChange={(e) => setFormData({ ...formData, reorder: e.target.value })}
-            className="w-full bg-[#070B12] border border-[#1E2A45] rounded-lg px-3 py-2 text-sm text-[#E7ECF6] focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+            className="w-full bg-[#070B12] border border-[#1E2A45] rounded-lg px-3 py-2 text-sm text-[#E7ECF6] focus:outline-none focus:ring-2 focus:ring-teal-500/40"
           />
         </div>
       </div>
@@ -220,7 +206,7 @@ function MedicineForm({ initialData, onSubmit, onClose, categories, suppliers, s
           type="date"
           value={formData.expiry}
           onChange={(e) => setFormData({ ...formData, expiry: e.target.value })}
-          className="w-full bg-[#070B12] border border-[#1E2A45] rounded-lg px-3 py-2 text-sm text-[#E7ECF6] focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+          className="w-full bg-[#070B12] border border-[#1E2A45] rounded-lg px-3 py-2 text-sm text-[#E7ECF6] focus:outline-none focus:ring-2 focus:ring-teal-500/40"
         />
       </div>
 
@@ -235,7 +221,7 @@ function MedicineForm({ initialData, onSubmit, onClose, categories, suppliers, s
         <button
           type="submit"
           disabled={submitting}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors"
+          className="px-4 py-2 bg-teal-500 hover:bg-teal-600 disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors"
         >
           {submitting ? "Saving..." : "Save Changes"}
         </button>
@@ -383,7 +369,7 @@ function Medicines() {
               label: "Actions",
               render: (r) => (
                 <div className="flex items-center gap-3">
-                  <button onClick={() => setEditingMedicine(r)} className="text-[#5D6B85] hover:text-blue-400 transition-colors" title="Edit">
+                  <button onClick={() => setEditingMedicine(r)} className="text-[#5D6B85] hover:text-teal-400 transition-colors" title="Edit">
                     <Edit2 size={15} />
                   </button>
                   <button onClick={() => handleDeleteMedicine(r.id)} className="text-[#5D6B85] hover:text-rose-400 transition-colors" title="Delete">

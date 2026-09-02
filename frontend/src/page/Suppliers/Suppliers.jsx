@@ -15,13 +15,13 @@ function Toolbar({ query, setQuery, placeholder, onAdd, addLabel }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={placeholder}
-          className="w-full bg-[#0F1626] border border-[#1E2A45] rounded-lg pl-9 pr-3 py-2 text-sm text-[#E7ECF6] placeholder-[#5D6B85] focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/50"
+          className="w-full bg-[#0F1626] border border-[#1E2A45] rounded-lg pl-9 pr-3 py-2 text-sm text-[#E7ECF6] placeholder-[#5D6B85] focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500/50"
         />
       </div>
       {onAdd && (
         <button
           onClick={onAdd}
-          className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 transition-colors text-white text-sm font-medium px-3.5 py-2 rounded-lg"
+          className="flex items-center gap-1.5 bg-teal-500 hover:bg-teal-600 transition-colors text-white text-sm font-medium px-3.5 py-2 rounded-lg"
         >
           <Plus size={15} /> {addLabel}
         </button>
@@ -36,7 +36,7 @@ function Badge({ children, tone = "neutral" }) {
     good: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
     warn: "bg-amber-500/10 text-amber-400 border-amber-500/30",
     bad: "bg-rose-500/10 text-rose-400 border-rose-500/30",
-    info: "bg-blue-500/10 text-blue-400 border-blue-500/30",
+    info: "bg-teal-500/10 text-teal-400 border-teal-500/30",
   };
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${tones[tone]}`}>
@@ -99,7 +99,7 @@ function mapSupplierToApi(form) {
 //   );
 // }
 
-function SupplierForm({ initialData, onSubmit, onClose, submitting, formId }) {
+function SupplierForm({ initialData, onSubmit, formId }) {
   const [formData, setFormData] = useState(
     initialData || { code: "", name: "", contact: "", phone: "", email: "", address: "", status: "active" }
   );
@@ -138,11 +138,11 @@ function SupplierForm({ initialData, onSubmit, onClose, submitting, formId }) {
   const inputClass = (field) =>
     `w-full bg-[#070B12] border rounded-lg px-3 py-2.5 text-sm text-[#E7ECF6] focus:outline-none focus:ring-2 ${errors[field]
       ? "border-rose-500/60 focus:ring-rose-500/40"
-      : "border-[#1E2A45] focus:ring-blue-500/40"
+      : "border-[#1E2A45] focus:ring-teal-500/40"
     }`;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form id={formId} onSubmit={handleSubmit} className="space-y-4">
       <FormInput label="Supplier Code" required type="text" minLength={2} maxLength={30} pattern="[A-Za-z0-9_-]+" title="Use letters, numbers, hyphens, or underscores only." placeholder="e.g. SUP-1001" value={formData.code} onChange={(e) => setFormData({ ...formData, code: e.target.value })} />
       <FormInput label="Supplier Name" required type="text" minLength={2} maxLength={100} placeholder="e.g. MedSupply Co." value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
 
@@ -162,22 +162,6 @@ function SupplierForm({ initialData, onSubmit, onClose, submitting, formId }) {
           <option value="inactive">Inactive</option>
       </FormSelect>
 
-      <div className="flex justify-end gap-3 pt-2">
-        <button
-          type="button"
-          onClick={onClose}
-          className="px-4 py-2 border border-[#1E2A45] text-[#8B96AE] hover:text-[#E7ECF6] hover:bg-white/[0.02] text-sm font-medium rounded-lg transition-colors"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          disabled={submitting}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors"
-        >
-          {submitting ? "Saving..." : "Save Vendor"}
-        </button>
-      </div>
     </form>
   );
 }
@@ -310,7 +294,7 @@ function Suppliers({ navigationFilters = {} }) {
               label: "Actions",
               render: (r) => (
                 <div className="flex items-center gap-3">
-                  {canUpdate && <button onClick={() => setEditingSupplier(r)} className="text-[#5D6B85] hover:text-blue-400 transition-colors" title="Edit Supplier">
+                  {canUpdate && <button onClick={() => setEditingSupplier(r)} className="text-[#5D6B85] hover:text-teal-400 transition-colors" title="Edit Supplier">
                     <Edit2 size={15} />
                   </button>}
                   {canDelete && <button onClick={() => handleDeleteSupplier(r.id)} className="text-[#5D6B85] hover:text-rose-400 transition-colors" title="Delete Supplier">
@@ -363,7 +347,7 @@ function Suppliers({ navigationFilters = {} }) {
       <FormModal
         isOpen={!!editingSupplier}
         onClose={() => setEditingSupplier(null)}
-        title="Update Vendor Credentials"
+        title="Update Supplier"
         subtitle="Update the information below and save your changes."
         footer={
           <>
