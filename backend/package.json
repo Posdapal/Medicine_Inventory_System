@@ -4,7 +4,7 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
     "migrate:permission-actions": "node scripts/migrate-permission-file-actions.js",
     "migrate:roles": "node scripts/migrate-role-management.js",
     "migrate:remove-staff": "node scripts/migrate-remove-staff-role.js",
@@ -27,6 +27,7 @@
     "sequelize": "^6.37.8"
   },
   "devDependencies": {
+    "jest": "^30.5.1",
     "nodemon": "^3.1.14"
   }
 }
