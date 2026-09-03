@@ -9,6 +9,7 @@ import axiosClient from "./axiosClient";
 export const authApi = {
   login: (email, password) => axiosClient.post("/auth/login", { email, password }),
   me: () => axiosClient.get("/auth/me"),
+  profile: () => axiosClient.get("/auth/profile"),
 };
 
 export const dashboardApi = {
@@ -100,15 +101,22 @@ export const settingsApi = {
   get: () => axiosClient.get("/settings"),
   updateProfile: (data) => axiosClient.put("/settings/profile", data),
   updatePreferences: (data) => axiosClient.put("/settings/preferences", data),
-  updatePassword: (data) => axiosClient.put("/settings/password", data),
+  updatePassword: (data) => axiosClient.put("/settings/password", data, { skipToast: true }),
   updateTwoFactor: (enabled) => axiosClient.put("/settings/two-factor", { enabled }),
   getActivityLog: () => api.get("/settings/activity-log"), // add this
 };
 
 // Add this export to your existing api/endpoints.js (next to usersApi)
 export const permissionsApi = {
-  getForUser: (userId) => axiosClient.get(`/permissions/${userId}`),
-  updateForUser: (userId, permissions) => axiosClient.put(`/permissions/${userId}`, { permissions }),
+  mine: () => axiosClient.get('/permissions/me'),
+};
+
+export const rolesApi = {
+  getAll: (params) => axiosClient.get('/roles', { params }),
+  getById: (id) => axiosClient.get(`/roles/${id}`),
+  create: (data) => axiosClient.post('/roles', data),
+  update: (id, data) => axiosClient.put(`/roles/${id}`, data),
+  remove: (id) => axiosClient.delete(`/roles/${id}`),
 };
 
 export const usersApi = {

@@ -7,7 +7,7 @@ const getAll = asyncHandler(async (req, res) => {
   const statusFilter = req.query.status ? ' AND u.status = ?' : '';
   const params = req.query.status ? [search, req.query.status] : [search];
   const rows = await queryPage(req,
-    `SELECT u.id, u.full_name, u.username, u.email, r.name AS role, u.status, u.created_at
+    `SELECT u.id, u.full_name, u.username, u.email, u.role_id, CASE WHEN LOWER(r.name)='staff' THEN 'Stock Staff' ELSE r.name END AS role, u.status, u.created_at
      FROM users u
      JOIN roles r ON r.id = u.role_id
      WHERE u.full_name LIKE ?${statusFilter}`,
@@ -19,7 +19,7 @@ const getAll = asyncHandler(async (req, res) => {
 // GET /api/users/:id
 const getById = asyncHandler(async (req, res) => {
   const rows = await query(
-    `SELECT u.id, u.full_name, u.username, u.email, r.name AS role, u.status
+    `SELECT u.id, u.full_name, u.username, u.email, u.role_id, CASE WHEN LOWER(r.name)='staff' THEN 'Stock Staff' ELSE r.name END AS role, u.status
      FROM users u
      JOIN roles r ON r.id = u.role_id
      WHERE u.id = ?`,
@@ -30,17 +30,17 @@ const getById = asyncHandler(async (req, res) => {
 });
 
 // POST /api/users
-// body: { full_name, username, email, password, role } -- role is a NAME, e.g. "Staff" or "Administrator"
+// body includes roleId; role IDs are resolved dynamically from active database roles.
 const create = asyncHandler(async (req, res) => {
-  const { full_name, username, email, password, role } = req.body;
+  const { full_name, username, email, password, roleId } = req.body;
   if (!full_name || !username || !email || !password) {
     return fail(res, 'Full name, username, email and password are required', 400);
   }
 
-  // Resolve role name -> role_id. Defaults to "Staff" if not provided.
-  const roleName = role || 'Staff';
-  const roleRows = await query('SELECT id FROM roles WHERE name = ?', [roleName]);
-  if (!roleRows[0]) return fail(res, `Unknown role "${roleName}"`, 400);
+  // Resolve the submitted dynamic role ID and reject retired/inactive roles.
+  if (!roleId) return fail(res, 'An active roleId is required', 400);
+  const roleRows = await query("SELECT id FROM roles WHERE id=? AND status='active' AND LOWER(name)<>'staff'", [roleId]);
+  if (!roleRows[0]) return fail(res, 'Unknown or inactive role', 400);
 
   const hashed = await bcrypt.hash(password, 10);
   const result = await query(
@@ -53,15 +53,15 @@ const create = asyncHandler(async (req, res) => {
 });
 
 // PUT /api/users/:id
-// body: { full_name, username, email, role, status } -- role is a NAME
+// body: { full_name, username, email, roleId, status }
 const update = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { full_name, username, email, role, status } = req.body;
+  const { full_name, username, email, roleId, status } = req.body;
 
   let role_id;
-  if (role) {
-    const roleRows = await query('SELECT id FROM roles WHERE name = ?', [role]);
-    if (!roleRows[0]) return fail(res, `Unknown role "${role}"`, 400);
+  if (roleId) {
+    const roleRows = await query("SELECT id FROM roles WHERE id=? AND status='active' AND LOWER(name)<>'staff'", [roleId]);
+    if (!roleRows[0]) return fail(res, 'Unknown or inactive role', 400);
     role_id = roleRows[0].id;
   } else {
     const existing = await query('SELECT role_id FROM users WHERE id = ?', [id]);

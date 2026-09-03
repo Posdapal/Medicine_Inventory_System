@@ -1,12 +1,12 @@
 const router = require('express').Router();
-const { verifyToken } = require('../middleware/auth.middleware');
+const { verifyToken, checkPermission } = require('../middleware/auth.middleware');
 const c = require('../controllers/units.controller');
 
 router.use(verifyToken);
 
-router.get('/',  c.getAll);
-router.post('/',  c.create);
-router.put('/:id',  c.update);
-router.delete('/:id',  c.remove);
+router.get('/', checkPermission('units', 'read'), c.getAll);
+router.post('/', checkPermission('units', 'create'), c.create);
+router.put('/:id', checkPermission('units', 'update'), c.update);
+router.delete('/:id', checkPermission('units', 'delete'), c.remove);
 
 module.exports = router;

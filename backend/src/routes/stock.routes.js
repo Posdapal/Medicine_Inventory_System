@@ -14,7 +14,7 @@ router.post('/out', checkPermission('stock', 'create'), c.createStockOut);
 router.put('/out/:id', checkPermission('stock', 'update'), c.updateStockOut);
 router.delete('/out/:id', checkPermission('stock', 'delete'), c.removeStockOut);
 
-router.get('/current', checkPermission('stock', 'read'), c.getCurrentStock);
-router.get('/history', checkPermission('stock', 'read'), c.getStockHistory);
+router.get('/current', checkPermission('current_stock', 'read'), c.getCurrentStock);
+router.get('/history', checkPermission('stock_history', 'read'), c.getStockHistory);
 
 module.exports = router;

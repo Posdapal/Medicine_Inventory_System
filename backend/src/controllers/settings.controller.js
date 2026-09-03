@@ -5,10 +5,12 @@ const { sendSecurityAlert } = require('../utils/mailer');
 // GET /api/settings -> the logged-in user's own profile + preferences
 const getMySettings = asyncHandler(async (req, res) => {
   const rows = await query(
-    `SELECT u.id, u.full_name, u.email, u.phone, u.profile_image,
+    `SELECT u.id, u.full_name, u.username, u.email, u.phone, u.profile_image,
+            r.name AS role, u.status,
             s.address, s.date_of_birth, s.gender, s.theme, s.language,
             s.notifications_telegram, s.notifications_email, s.two_factor_enabled
      FROM users u
+     JOIN roles r ON r.id = u.role_id
      LEFT JOIN user_settings s ON s.user_id = u.id
      WHERE u.id = ?`,
     [req.user.id]
@@ -52,7 +54,7 @@ const updatePassword = asyncHandler(async (req, res) => {
 
   const rows = await query('SELECT password FROM users WHERE id = ?', [req.user.id]);
   const match = await bcrypt.compare(current_password, rows[0].password);
-  if (!match) return fail(res, 'Current password is incorrect', 401);
+  if (!match) return fail(res, 'Current password is incorrect', 400);
 
   const hashed = await bcrypt.hash(new_password, 10);
   await query('UPDATE users SET password=? WHERE id=?', [hashed, req.user.id]);

@@ -33,7 +33,7 @@ const Sidebar = () => {
       name: "Dashboard",
       path: "/dashboard",
       icon: <FaTachometerAlt />,
-      color: "text-blue-500",
+      color: "text-teal-500",
     },
 
     {
@@ -117,7 +117,7 @@ const Sidebar = () => {
       {/* Logo */}
 
        <div className="flex items-center gap-2 px-6 h-16 border-b border-[#1E2A45]">
-          <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-teal-500 flex items-center justify-center">
             <Stethoscope size={16} className="text-white" />
           </div>
           <span className="font-semibold tracking-tight">Medicine Inventory System</span>
@@ -149,8 +149,8 @@ const Sidebar = () => {
               className={({ isActive }) =>
                 `group flex items-center w-full gap-4 px-3 py-3 rounded-xl transition-all duration-300
     ${isActive
-                  ? "bg-blue-600 text-white"
-                  : "hover:bg-blue-600 hover:text-white"
+                  ? "bg-teal-500 text-white"
+                  : "hover:bg-teal-500 hover:text-white"
                 }`
               }
             >

@@ -5,6 +5,9 @@
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "migrate:permission-actions": "node scripts/migrate-permission-file-actions.js",
+    "migrate:roles": "node scripts/migrate-role-management.js",
+    "migrate:remove-staff": "node scripts/migrate-remove-staff-role.js",
     "start": "nodemon server.js"
   },
   "keywords": [],

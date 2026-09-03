@@ -4,7 +4,8 @@
 import { useEffect, useState } from "react";
 import { stockApi } from "../../api/endpoints";
 import { PageHeader, Badge, Table, Toolbar, ExportGroup, Pagination } from "../../components/ui/Common";
-import { downloadExcel, printTable } from "../../utils/ExportUtils";
+import { downloadExcel, printTable, downloadXlsx } from "../../utils/ExportUtils";
+import { useAuth } from "../../context/AuthContext";
 
 const HEADERS = ["Product Code", "Product Name", "Category", "Unit", "Available Qty", "Min Stock", "Status"];
 
@@ -18,6 +19,9 @@ function stockStatus(stock, minimum) {
 }
 
 function CurrentStock({ navigationFilters = {} }) {
+  const { can } = useAuth();
+  const canExport = can("current_stock", "export");
+  const canPrint = can("current_stock", "print");
   const [query, setQuery] = useState("");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -62,7 +66,7 @@ function CurrentStock({ navigationFilters = {} }) {
         query={query}
         setQuery={setQuery}
         placeholder="Search current stock..."
-        extra={<ExportGroup onExportExcel={handleExportExcel} onExportPdf={handleExportPdf} onPrint={handlePrint} />}
+        extra={(canExport||canPrint) ? <ExportGroup onExportExcel={canExport?handleExportExcel:undefined} onExportPdf={canExport?handleExportPdf:undefined} onPrint={canPrint?handlePrint:undefined} /> : null}
       />
 
       {error && <p className="text-sm text-rose-400 mb-3">{error}</p>}

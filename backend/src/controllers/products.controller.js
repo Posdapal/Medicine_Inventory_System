@@ -1,5 +1,18 @@
 const { query, queryPage, ok, fail, asyncHandler } = require('../utils/helper');
 
+const normalize = (value) => String(value || '').trim();
+
+async function findProductByCode(productCode, excludeId = null) {
+  const params = [productCode];
+  let sql = 'SELECT id, product_code, product_name FROM products WHERE LOWER(TRIM(product_code)) = LOWER(?)';
+  if (excludeId !== null) {
+    sql += ' AND id <> ?';
+    params.push(excludeId);
+  }
+  const rows = await query(`${sql} LIMIT 1`, params);
+  return rows[0] || null;
+}
+
 // GET /api/products?search=&category_id=&status=
 const getAll = asyncHandler(async (req, res) => {
   const { search, category_id, status } = req.query;
@@ -56,14 +69,25 @@ const getById = asyncHandler(async (req, res) => {
 // POST /api/products
 const create = asyncHandler(async (req, res) => {
   const { product_code, product_name, generic_name, category_id, unit_id, minimum_stock, status } = req.body;
-  if (!product_code || !product_name) return fail(res, 'Product code and product name are required', 400);
+  const normalizedCode = normalize(product_code);
+  const normalizedName = normalize(product_name);
+  if (!normalizedCode || !normalizedName) return fail(res, 'Product code and product name are required', 400);
+
+  const existing = await findProductByCode(normalizedCode);
+  if (existing) {
+    return fail(
+      res,
+      `Product code "${normalizedCode}" is already used by "${existing.product_name}". Please enter a different product code.`,
+      409
+    );
+  }
 
   const result = await query(
     `INSERT INTO products (category_id, unit_id, product_code, product_name, generic_name, minimum_stock, status)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [
-      category_id || null, unit_id || null, product_code, product_name,
-      generic_name || null, minimum_stock || 0, status || 'active',
+      category_id || null, unit_id || null, normalizedCode, normalizedName,
+      normalize(generic_name) || null, minimum_stock || 0, status || 'active',
     ]
   );
   return ok(res, { id: result.insertId }, 'Product created', 201);
@@ -73,13 +97,24 @@ const create = asyncHandler(async (req, res) => {
 const update = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { product_code, product_name, generic_name, category_id, unit_id, minimum_stock, status } = req.body;
-  if (!product_code || !product_name) return fail(res, 'Product code and product name are required', 400);
+  const normalizedCode = normalize(product_code);
+  const normalizedName = normalize(product_name);
+  if (!normalizedCode || !normalizedName) return fail(res, 'Product code and product name are required', 400);
+
+  const existing = await findProductByCode(normalizedCode, id);
+  if (existing) {
+    return fail(
+      res,
+      `Product code "${normalizedCode}" is already used by "${existing.product_name}". Please enter a different product code.`,
+      409
+    );
+  }
 
   await query(
     `UPDATE products
      SET category_id=?, unit_id=?, product_code=?, product_name=?, generic_name=?, minimum_stock=?, status=?
      WHERE id=?`,
-    [category_id || null, unit_id || null, product_code, product_name, generic_name || null, minimum_stock || 0, status || 'active', id]
+    [category_id || null, unit_id || null, normalizedCode, normalizedName, normalize(generic_name) || null, minimum_stock || 0, status || 'active', id]
   );
   return ok(res, null, 'Product updated');
 });

@@ -4,6 +4,7 @@ import { reportsApi } from "../../api/endpoints";
 import { Card, FormDatePicker, PageHeader, Table } from "../../components/ui/Common";
 import { downloadExcel, downloadXlsx } from "../../utils/ExportUtils";
 import { toast } from "../../utils/toast";
+import { useAuth } from "../../context/AuthContext";
 
 const REPORT_TYPES = [
   { value: "products", label: "Products", columns: [["product_code", "Code"], ["product_name", "Product Name"], ["generic_name", "Generic Name"], ["category", "Category"], ["unit", "Unit"], ["minimum_stock", "Min Stock"], ["status", "Status"], ["created_date", "Created Date"]] },
@@ -27,7 +28,7 @@ function ReportTypeSelect({ value, onChange }) {
     <div>
       <label className="mb-1.5 block text-sm font-medium text-[#8B96AE]">Report Type <span className="text-rose-400">*</span></label>
       <details ref={menuRef} className="group relative z-30 open:z-50">
-        <summary className="flex h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-xl border border-[#2A3A5A] bg-[#0F1626] px-3.5 text-sm font-semibold text-[#E7ECF6] shadow-sm transition hover:border-blue-500/60 hover:bg-blue-500/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40">
+        <summary className="flex h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-xl border border-[#2A3A5A] bg-[#0F1626] px-3.5 text-sm font-semibold text-[#E7ECF6] shadow-sm transition hover:border-teal-500/60 hover:bg-teal-500/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40">
           <span className="flex min-w-0 items-center gap-2.5"><FileSpreadsheet size={17} className="shrink-0 text-emerald-400" /><span className="truncate">{selected.label}</span></span>
           <ChevronDown size={16} className="shrink-0 text-[#7D8AA3] transition-transform group-open:rotate-180" />
         </summary>
@@ -36,7 +37,7 @@ function ReportTypeSelect({ value, onChange }) {
           <div className="max-h-72 overflow-y-auto pr-1">
             {REPORT_TYPES.map((type) => {
               const active = type.value === value;
-              return <button key={type.value} type="button" onClick={() => { onChange(type.value); menuRef.current?.removeAttribute("open"); }} className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm font-medium transition ${active ? "bg-blue-500/15 text-blue-300" : "text-[#D7DEEB] hover:bg-white/[0.05]"}`}><span>{type.label}</span>{active && <Check size={15} />}</button>;
+              return <button key={type.value} type="button" onClick={() => { onChange(type.value); menuRef.current?.removeAttribute("open"); }} className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm font-medium transition ${active ? "bg-teal-500/15 text-teal-300" : "text-[#D7DEEB] hover:bg-white/[0.05]"}`}><span>{type.label}</span>{active && <Check size={15} />}</button>;
             })}
           </div>
         </div>
@@ -56,6 +57,8 @@ function displayValue(value, key) {
 }
 
 export default function Reports() {
+  const { can } = useAuth();
+  const canExport = can("reports", "export");
   const [reportType, setReportType] = useState(REPORT_TYPES[0].value);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -158,10 +161,10 @@ export default function Reports() {
           <div><ReportTypeSelect value={reportType} onChange={setReportType} /></div>
           <div><FormDatePicker label="From Date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} /></div>
           <div><FormDatePicker label="To Date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} min={dateFrom || undefined} /></div>
-          <button type="button" onClick={handleGenerate} disabled={generating} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-950/20 transition hover:-translate-y-0.5 hover:bg-emerald-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0">
+          {canExport && <button type="button" onClick={handleGenerate} disabled={generating} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-950/20 transition hover:-translate-y-0.5 hover:bg-emerald-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0">
             {generating ? <FileSpreadsheet className="animate-pulse" size={17} /> : <Download size={17} />}
             {generating ? "Generating..." : "Generate"}
-          </button>
+          </button>}
         </div>
       </Card>
 

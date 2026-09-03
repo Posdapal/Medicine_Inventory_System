@@ -5,14 +5,35 @@ import {
   PageHeader, Badge, Table, Toolbar, Modal, FormInput, FormSelect, FormDatePicker,
   ImportButton, ActionButton, Pagination,
 } from "../../components/ui/Common";
-import { downloadExcel, parseCsvFile, downloadXlsx, downloadXlsxTemplate, parseImportFile } from "../../utils/ExportUtils";
+import { downloadExcel, parseCsvFile, downloadXlsx, downloadXlsxTemplate, parseImportFile, normalizeHeader } from "../../utils/ExportUtils";
 import Swal from 'sweetalert2';
 import { toast } from "../../utils/toast";
+import { useAuth } from "../../context/AuthContext";
 
-const CSV_HEADERS = [
-  "Product", "Supplier", "Batch No.", "Manufacture Date", "Expiry Date",
-  "Qty Received", "Purchase Price", "Reference No.", "Date",
+// Single source of truth: label shown in the file <-> field name used by the API
+const STOCK_IN_FIELDS = [
+  { label: "Product", key: "product" },
+  { label: "Supplier", key: "supplier" },
+  { label: "Batch No.", key: "batch_number" },
+  { label: "Manufacture Date", key: "manufacture_date" },
+  { label: "Expiry Date", key: "expiry_date" },
+  { label: "Qty Received", key: "received_quantity" },
+  { label: "Purchase Price", key: "purchase_price" },
+  { label: "Reference No.", key: "reference_number" },
+  { label: "Date", key: "transaction_date" },
 ];
+
+// const CSV_HEADERS = [
+//   "Product", "Supplier", "Batch No.", "Manufacture Date", "Expiry Date",
+//   "Qty Received", "Purchase Price", "Reference No.", "Date",
+// ];
+
+const CSV_HEADERS = STOCK_IN_FIELDS.map((f) => f.label);
+
+const HEADER_KEY_MAP = STOCK_IN_FIELDS.reduce((acc, f) => {
+  acc[normalizeHeader(f.label)] = f.key;
+  return acc;
+}, {});
 
 function StockInForm({ onSubmit, onClose, products, suppliers, submitting, initialValues, submitLabel }) {
   const [form, setForm] = useState(() => ({
@@ -74,6 +95,11 @@ function StockInForm({ onSubmit, onClose, products, suppliers, submitting, initi
 }
 
 function StockIn({ navigationFilters = {} }) {
+  const { can } = useAuth();
+  const canCreate = can("stock_in", "create");
+  const canDelete = can("stock_in", "delete");
+  const canImport = can("stock_in", "import");
+  const canExport = can("stock_in", "export");
   const [query, setQuery] = useState("");
   const [rows, setRows] = useState([]);
   const [products, setProducts] = useState([]);
@@ -176,25 +202,78 @@ function StockIn({ navigationFilters = {} }) {
     );
   };
 
+  // const handleImport = async (file) => {
+  //   try {
+  //     const records = await parseImportFile(file);
+  //     setSubmitting(true);
+  //     for (const r of records) {
+  //       await stockApi.stockIn.create({
+  //         product: r.product,
+  //         supplier: r.supplier,
+  //         batch_number: r.batch_number,
+  //         manufacture_date: r.manufacture_date,
+  //         expiry_date: r.expiry_date,
+  //         received_quantity: Number(r.received_quantity || 0),
+  //         purchase_price: Number(r.purchase_price || 0),
+  //         reference_number: r.reference_number,
+  //         transaction_date: r.transaction_date,
+  //       }, { skipToast: true });
+  //     }
+  //     await loadRows(query || undefined);
+  //     toast.success(`Imported ${records.length} stock-in record(s).`);
+  //   } catch (err) {
+  //     toast.error(err.message || "Failed to import stock-in records.");
+  //   } finally {
+  //     setSubmitting(false);
+  //   }
+  // };
+
   const handleImport = async (file) => {
     try {
       const records = await parseImportFile(file);
       setSubmitting(true);
-      for (const r of records) {
-        await stockApi.stockIn.create({
-          product: r.product,
-          supplier: r.supplier,
-          batch_number: r.batch_number,
-          manufacture_date: r.manufacture_date,
-          expiry_date: r.expiry_date,
-          received_quantity: Number(r.received_quantity || 0),
-          purchase_price: Number(r.purchase_price || 0),
-          reference_number: r.reference_number,
-          transaction_date: r.transaction_date,
-        }, { skipToast: true });
+
+      let successCount = 0;
+      const errors = [];
+
+      for (const raw of records) {
+        // remap whatever headers came back (already normalized by the parsers)
+        // to the field names the API expects
+        const mapped = {};
+        Object.entries(raw).forEach(([key, value]) => {
+          const fieldKey = HEADER_KEY_MAP[normalizeHeader(key)] || normalizeHeader(key);
+          mapped[fieldKey] = value;
+        });
+
+        const payload = {
+          product: mapped.product,
+          supplier: mapped.supplier,
+          batch_number: (mapped.batch_number || "").trim(),
+          manufacture_date: mapped.manufacture_date,
+          expiry_date: mapped.expiry_date,
+          received_quantity: Number(mapped.received_quantity || 0),
+          purchase_price: Number(mapped.purchase_price || 0),
+          reference_number: mapped.reference_number,
+          transaction_date: mapped.transaction_date,
+        };
+
+        if (!payload.batch_number || !(payload.received_quantity > 0)) {
+          errors.push(`"${payload.product || "Unknown product"}": batch number and a positive quantity are required.`);
+          continue; // skip this row, keep processing the rest
+        }
+
+        try {
+          await stockApi.stockIn.create(payload, { skipToast: true });
+          successCount++;
+        } catch (err) {
+          errors.push(`"${payload.product}": ${err.message}`);
+        }
       }
+
       await loadRows(query || undefined);
-      toast.success(`Imported ${records.length} stock-in record(s).`);
+
+      if (successCount) toast.success(`Imported ${successCount} stock-in record(s).`);
+      if (errors.length) toast.error(`${errors.length} row(s) skipped — ${errors[0]}${errors.length > 1 ? ` (+${errors.length - 1} more)` : ""}`);
     } catch (err) {
       toast.error(err.message || "Failed to import stock-in records.");
     } finally {
@@ -204,7 +283,7 @@ function StockIn({ navigationFilters = {} }) {
 
   return (
     <div>
-      <PageHeader title="Stock In" subtitle="Stock Management / Stock In" description={navigationFilters.date === "today" ? "Showing completed stock-in records from today." : "Record and review incoming inventory."} onAdd={() => setIsAddOpen(true)} addLabel="Create Stock In" />
+      <PageHeader title="Stock In" subtitle="Stock Management / Stock In" description={navigationFilters.date === "today" ? "Showing completed stock-in records from today." : "Record and review incoming inventory."} onAdd={canCreate ? () => setIsAddOpen(true) : undefined} addLabel="Create Stock In" />
 
       <Toolbar
         query={query}
@@ -229,7 +308,7 @@ function StockIn({ navigationFilters = {} }) {
               { key: "product", label: "Product" },
               { key: "supplier", label: "Supplier", render: (r) => r.supplier || "—" },
               { key: "batch_number", label: "Batch No." },
-              { key: "manufacture_date", label: "Manufacture Date", render: (r) => r.manufacture_date || "-"},
+              { key: "manufacture_date", label: "Manufacture Date", render: (r) => r.manufacture_date || "-" },
               { key: "expiry_date", label: "Expiry Date", render: (r) => r.expiry_date || "—" },
               { key: "received_quantity", label: "Qty Received", render: (r) => <Badge tone="good">+{r.received_quantity}</Badge> },
               { key: "purchase_price", label: "Purchase Price", render: (r) => `$${Number(r.purchase_price || 0).toFixed(2)}` },

@@ -22,6 +22,7 @@ import { settingsApi } from "../../api/endpoints";
 import { useAuth } from "../../context/AuthContext";
 import { ThemeCotext } from "../../context/ThemeContextProvider";
 import { Alert, Badge, Button, Card, ChecklistItem, Input, Tabs } from "../../components/ui/Primitives";
+import { FormSelect } from "../../components/ui/Common";
 
 function SelectField({ label, value, onChange, children, disabled = false }) {
   return (
@@ -247,13 +248,6 @@ function Settings() {
     async function loadSettings() {
       try {
         const { data } = await settingsApi.get();
-        setProfile({
-          full_name: data.full_name || "",
-          email: data.email || "",
-          address: data.address || "",
-          date_of_birth: data.date_of_birth ? data.date_of_birth.substring(0, 10) : "",
-          gender: data.gender || "",
-        });
         setPreferences({
           notifications_telegram: !!data.notifications_telegram,
           notifications_email: !!data.notifications_email,
@@ -397,7 +391,6 @@ function Settings() {
           <div className="border-b border-slate-100 bg-shadow-black/10 from-slate-100 to-teal-100 px-5 py-5 sm:px-7">
             <div className="flex items-center gap-3">
               <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-teal-50 text-teal-300">
-                {tab === "profile" && <UserRound size={21} />}
                 {tab === "preferences" && <Palette size={21} />}
                 {tab === "security" && <LockKeyhole size={21} />}
                 {tab === "activity" && <History size={21} />}

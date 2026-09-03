@@ -9,7 +9,7 @@ import * as XLSX from "xlsx";
 import ExcelJS from "exceljs";
 
 
-function normalizeHeader(header) {
+export function normalizeHeader(header) {
   return String(header || "")
     .trim()
     .toLowerCase()
@@ -75,7 +75,7 @@ export function parseCsvFile(file) {
           .map((r) => r.trim())
           .filter((r) => r.length > 0);
         if (rows.length === 0) return resolve([]);
-        const headers = rows[0].split(",").map((h) => h.trim());
+        const headers = rows[0].split(",").map((h) => normalizeHeader(h));
         const records = rows.slice(1).map((line) => {
           const cells = line.split(",");
           const record = {};

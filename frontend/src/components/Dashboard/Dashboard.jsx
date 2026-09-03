@@ -8,7 +8,7 @@ import { dashboardApi } from "../../api/endpoints";
 ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 const formatNumber = new Intl.NumberFormat("en-US");
 const tones = {
-  blue: ["bg-blue-50 text-blue-600 ring-blue-100", "bg-blue-50 text-blue-700", "Catalog"],
+  blue: ["bg-teal-50 text-teal-600 ring-teal-100", "bg-teal-50 text-teal-700", "Catalog"],
   green: ["bg-emerald-50 text-emerald-600 ring-emerald-100", "bg-emerald-50 text-emerald-700", "Available"],
   amber: ["bg-amber-50 text-amber-600 ring-amber-100", "bg-amber-50 text-amber-700", "Attention"],
   rose: ["bg-rose-50 text-rose-600 ring-rose-100", "bg-rose-50 text-rose-700", "Critical"],
@@ -19,16 +19,16 @@ const tones = {
 function StatCard({ icon: Icon, title, value, description, tone = "blue", compact = false, featured = false, onClick }) {
   const palette = tones[tone];
   return (
-    <button type="button" onClick={onClick} aria-label={`Open ${title}`} className={`group relative w-full overflow-hidden rounded-2xl border p-5 text-left transition duration-200 hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${featured ? "border-blue-500 bg-gradient-to-br from-blue-600 via-blue-500 to-sky-400 shadow-lg shadow-blue-950/20" : "border-slate-200 bg-white shadow-lg shadow-slate-950/10 hover:border-blue-300"}`}>
+    <button type="button" onClick={onClick} aria-label={`Open ${title}`} className={`group relative w-full overflow-hidden rounded-2xl border p-5 text-left transition duration-200 hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${featured ? "border-teal-500 bg-gradient-to-br from-teal-600 via-teal-500 to-emerald-400 shadow-lg shadow-teal-950/20" : "border-slate-200 bg-white shadow-lg shadow-slate-950/10 hover:border-teal-300"}`}>
       {featured && <div className="absolute -right-10 -top-16 h-40 w-40 rotate-12 rounded-[2.5rem] bg-white/10" />}
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className={`text-sm font-medium ${featured ? "text-blue-50" : "text-slate-600"}`}>{title}</p>
+          <p className={`text-sm font-medium ${featured ? "text-teal-50" : "text-slate-600"}`}>{title}</p>
           <p className={`${compact ? "mt-2 text-2xl" : "mt-3 text-3xl"} font-bold tracking-tight ${featured ? "text-white" : "text-slate-950"}`}>{formatNumber.format(Number(value) || 0)}</p>
-          {description && <p className={`mt-1.5 text-xs leading-5 ${featured ? "text-blue-50/80" : "text-slate-500"}`}>{description}</p>}
+          {description && <p className={`mt-1.5 text-xs leading-5 ${featured ? "text-teal-50/80" : "text-slate-500"}`}>{description}</p>}
         </div>
         <div className="flex flex-col items-end gap-3">
-          <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ring-1 ${featured ? "bg-white/95 text-blue-600 ring-white" : palette[0]}`}><Icon size={21} /></div>
+          <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ring-1 ${featured ? "bg-white/95 text-teal-600 ring-white" : palette[0]}`}><Icon size={21} /></div>
           <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${featured ? "bg-white/15 text-white" : palette[1]}`}>{palette[2]}</span>
         </div>
       </div>
@@ -79,7 +79,7 @@ export default function Dashboard({ onNavigate }) {
   const data = {
     labels: chart.map((item) => item.month),
     datasets: [
-      { label: "Stock In", data: chart.map((item) => Number(item.stock_in || 0)), backgroundColor: "#3B82F6", hoverBackgroundColor: "#60A5FA", borderRadius: 8, borderSkipped: false, maxBarThickness: 32 },
+      { label: "Stock In", data: chart.map((item) => Number(item.stock_in || 0)), backgroundColor: "#14B8A6", hoverBackgroundColor: "#0F9D8A", borderRadius: 8, borderSkipped: false, maxBarThickness: 32 },
       { label: "Stock Out", data: chart.map((item) => Number(item.stock_out || 0)), backgroundColor: "#A855F7", hoverBackgroundColor: "#C084FC", borderRadius: 8, borderSkipped: false, maxBarThickness: 32 },
     ],
   };
@@ -127,7 +127,7 @@ export default function Dashboard({ onNavigate }) {
       <section>
         <SectionHeading title="System records" description="Supporting master data currently available." />
         <div className="grid gap-4 sm:grid-cols-3">
-          <StatCard compact icon={Truck} title="Suppliers" value={summary?.total_suppliers} tone="purple" onClick={() => onNavigate("supplier-list", undefined, { status: "active" })} />
+          <StatCard compact icon={Truck} title="Suppliers" value={summary?.total_suppliers} tone="purple" onClick={() => onNavigate("suppliers", undefined, { status: "active" })} />
           <StatCard compact icon={Tags} title="Categories" value={summary?.total_categories} tone="blue" onClick={() => onNavigate("categories", "products", { status: "active" })} />
           <StatCard compact icon={UsersIcon} title="Users" value={summary?.total_users} tone="slate" onClick={() => onNavigate("users", undefined, { status: "active" })} />
         </div>
@@ -136,8 +136,8 @@ export default function Dashboard({ onNavigate }) {
       <section>
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xl shadow-slate-950/10 sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div><div className="flex items-center gap-2"><Activity size={18} className="text-blue-600" /><h2 className="font-semibold text-slate-950">Stock Analytics</h2></div><p className="mt-1 text-xs text-slate-500">Monthly inventory received versus issued over the last six months.</p></div>
-            <div className="flex gap-2 text-xs"><span className="rounded-full bg-blue-50 px-3 py-1.5 font-semibold text-blue-700">In {formatNumber.format(totals.incoming)}</span><span className="rounded-full bg-purple-50 px-3 py-1.5 font-semibold text-purple-700">Out {formatNumber.format(totals.outgoing)}</span></div>
+            <div><div className="flex items-center gap-2"><Activity size={18} className="text-teal-600" /><h2 className="font-semibold text-slate-950">Stock Analytics</h2></div><p className="mt-1 text-xs text-slate-500">Monthly inventory received versus issued over the last six months.</p></div>
+            <div className="flex gap-2 text-xs"><span className="rounded-full bg-teal-50 px-3 py-1.5 font-semibold text-teal-700">In {formatNumber.format(totals.incoming)}</span><span className="rounded-full bg-purple-50 px-3 py-1.5 font-semibold text-purple-700">Out {formatNumber.format(totals.outgoing)}</span></div>
           </div>
           <div className="mt-5 h-[360px]">{chart.length ? <Bar data={data} options={options} /> : <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 text-sm text-slate-500">No stock movement recorded yet.</div>}</div>
         </div>

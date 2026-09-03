@@ -1,0 +1,2 @@
+const router=require('express').Router(); const c=require('../controllers/roles.controller'); const {verifyToken,checkPermission}=require('../middleware/auth.middleware');
+router.use(verifyToken); router.get('/',checkPermission('roles','read'),c.getAll); router.get('/:id',checkPermission('roles','read'),c.getById); router.post('/',checkPermission('roles','create'),c.create); router.put('/:id',checkPermission('roles','update'),c.update); router.delete('/:id',checkPermission('roles','delete'),c.remove); module.exports=router;

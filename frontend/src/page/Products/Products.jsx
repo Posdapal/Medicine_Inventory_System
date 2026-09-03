@@ -14,6 +14,7 @@ import {
 import { parseCsvFile, downloadXlsx, downloadXlsxTemplate, parseImportFile } from "../../utils/ExportUtils";
 import Swal from 'sweetalert2';
 import { toast } from "../../utils/toast";
+import { useAuth } from "../../context/AuthContext";
 
 function stockTone(stock, minimum) {
   return stock <= minimum ? "bad" : stock <= minimum * 1.5 ? "warn" : "good";
@@ -140,7 +141,7 @@ function ProductForm({ initialData, onSubmit, onClose, categories, units, submit
           Cancel
         </button>
         <button type="submit" disabled={submitting}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors">
+          className="px-4 py-2 bg-teal-500 hover:bg-teal-600 disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors">
           {submitting ? "Saving..." : "Save Product"}
         </button>
       </div>
@@ -151,6 +152,13 @@ function ProductForm({ initialData, onSubmit, onClose, categories, units, submit
 const CSV_HEADERS = ["Product Code", "Product Name", "Generic Name", "Category Name", "Unit", "Minimum Stock", "Status"];
 
 function Products({ navigationFilters = {} }) {
+  const { can } = useAuth();
+  const canCreate = can("products", "create");
+  const canUpdate = can("products", "update");
+  const canDelete = can("products", "delete");
+  const canImport = can("products", "import");
+  const canExport = can("products", "export");
+  const canDownloadTemplate = can("products", "download_template");
   const [productsList, setProductsList] = useState([]);
   const [categories, setCategories] = useState([]);
   const [units, setUnits] = useState([]);
@@ -303,7 +311,7 @@ function Products({ navigationFilters = {} }) {
 
   return (
     <div>
-      <PageHeader title="Product List" subtitle="Products / Product List" description={navigationFilters.status === "active" ? "Showing active products from the dashboard." : "Manage products and their inventory details."} onAdd={() => setIsAddOpen(true)} addLabel="Add Product" />
+      <PageHeader title="Product List" subtitle="Products / Product List" description={navigationFilters.status === "active" ? "Showing active products from the dashboard." : "Manage products and their inventory details."} onAdd={canCreate ? () => setIsAddOpen(true) : undefined} addLabel="Add Product" />
 
       <Toolbar
         query={query}
@@ -311,9 +319,9 @@ function Products({ navigationFilters = {} }) {
         placeholder="Search products..."
         extra={
           <>
-            <ImportButton label="Import Products" onImport={handleImportProducts} />
-            <ActionButton icon={Download} label="Export Products" onClick={handleExportProducts} />
-            <ActionButton icon={Download} label="Download Template" onClick={() => downloadXlsxTemplate("product-template.xlsx", CSV_HEADERS)} />
+            {canImport && <ImportButton label="Import Products" onImport={handleImportProducts} />}
+            {canExport && <ActionButton icon={Download} label="Export Products" onClick={handleExportProducts} />}
+            {canDownloadTemplate && <ActionButton icon={Download} label="Download Template" onClick={() => downloadXlsxTemplate("product-template.xlsx", CSV_HEADERS)} />}
           </>
         }
       />

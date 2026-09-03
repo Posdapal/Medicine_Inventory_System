@@ -1,5 +1,18 @@
 const { query, queryPage, ok, fail, asyncHandler } = require('../utils/helper');
 
+const normalize = (value) => String(value || '').trim();
+
+async function unitNameExists(name, excludeId = null) {
+  const params = [name];
+  let sql = 'SELECT id FROM units WHERE LOWER(TRIM(name)) = LOWER(?)';
+  if (excludeId !== null) {
+    sql += ' AND id <> ?';
+    params.push(excludeId);
+  }
+  const rows = await query(`${sql} LIMIT 1`, params);
+  return rows.length > 0;
+}
+
 // GET /api/units?search=
 const getAll = asyncHandler(async (req, res) => {
   const search = req.query.search ? `%${req.query.search}%` : '%';
@@ -10,11 +23,16 @@ const getAll = asyncHandler(async (req, res) => {
 // POST /api/units
 const create = asyncHandler(async (req, res) => {
   const { name, abbreviation } = req.body;
-  if (!name) return fail(res, 'Unit name is required', 400);
+  const normalizedName = normalize(name);
+  const normalizedAbbreviation = normalize(abbreviation);
+  if (!normalizedName) return fail(res, 'Unit name is required', 400);
+  if (await unitNameExists(normalizedName)) {
+    return fail(res, 'A unit with this name already exists.', 409);
+  }
 
   const result = await query(
     'INSERT INTO units (name, abbreviation) VALUES (?, ?)',
-    [name, abbreviation || null]
+    [normalizedName, normalizedAbbreviation || null]
   );
   return ok(res, { id: result.insertId }, 'Unit created', 201);
 });
@@ -23,9 +41,14 @@ const create = asyncHandler(async (req, res) => {
 const update = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { name, abbreviation } = req.body;
-  if (!name) return fail(res, 'Unit name is required', 400);
+  const normalizedName = normalize(name);
+  const normalizedAbbreviation = normalize(abbreviation);
+  if (!normalizedName) return fail(res, 'Unit name is required', 400);
+  if (await unitNameExists(normalizedName, id)) {
+    return fail(res, 'A unit with this name already exists.', 409);
+  }
 
-  await query('UPDATE units SET name=?, abbreviation=? WHERE id=?', [name, abbreviation || null, id]);
+  await query('UPDATE units SET name=?, abbreviation=? WHERE id=?', [normalizedName, normalizedAbbreviation || null, id]);
   return ok(res, null, 'Unit updated');
 });
 

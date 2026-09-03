@@ -4,6 +4,7 @@ import { Search, Plus, Trash2, X, Edit2, Save } from "lucide-react";
 import { suppliersApi } from "../../api/endpoints";
 import Swal from 'sweetalert2';
 import { PageHeader, FormInput, FormSelect, Pagination, Table } from "../../components/ui/Common";
+import { useAuth } from "../../context/AuthContext";
 
 function Toolbar({ query, setQuery, placeholder, onAdd, addLabel }) {
   return (
@@ -14,13 +15,13 @@ function Toolbar({ query, setQuery, placeholder, onAdd, addLabel }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={placeholder}
-          className="w-full bg-[#0F1626] border border-[#1E2A45] rounded-lg pl-9 pr-3 py-2 text-sm text-[#E7ECF6] placeholder-[#5D6B85] focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/50"
+          className="w-full bg-[#0F1626] border border-[#1E2A45] rounded-lg pl-9 pr-3 py-2 text-sm text-[#E7ECF6] placeholder-[#5D6B85] focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500/50"
         />
       </div>
       {onAdd && (
         <button
           onClick={onAdd}
-          className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 transition-colors text-white text-sm font-medium px-3.5 py-2 rounded-lg"
+          className="flex items-center gap-1.5 bg-teal-500 hover:bg-teal-600 transition-colors text-white text-sm font-medium px-3.5 py-2 rounded-lg"
         >
           <Plus size={15} /> {addLabel}
         </button>
@@ -35,7 +36,7 @@ function Badge({ children, tone = "neutral" }) {
     good: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
     warn: "bg-amber-500/10 text-amber-400 border-amber-500/30",
     bad: "bg-rose-500/10 text-rose-400 border-rose-500/30",
-    info: "bg-blue-500/10 text-blue-400 border-blue-500/30",
+    info: "bg-teal-500/10 text-teal-400 border-teal-500/30",
   };
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${tones[tone]}`}>
@@ -134,7 +135,7 @@ function SupplierForm({ initialData, onSubmit, formId }) {
   const inputClass = (field) =>
     `w-full bg-[#070B12] border rounded-lg px-3 py-2.5 text-sm text-[#E7ECF6] focus:outline-none focus:ring-2 ${errors[field]
       ? "border-rose-500/60 focus:ring-rose-500/40"
-      : "border-[#1E2A45] focus:ring-blue-500/40"
+      : "border-[#1E2A45] focus:ring-teal-500/40"
     }`;
 
   return (
@@ -162,6 +163,10 @@ function SupplierForm({ initialData, onSubmit, formId }) {
 }
 
 function Suppliers({ navigationFilters = {} }) {
+  const { can } = useAuth();
+  const canCreate = can("suppliers", "create");
+  const canUpdate = can("suppliers", "update");
+  const canDelete = can("suppliers", "delete");
   const [suppliersList, setSuppliersList] = useState([]);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -258,7 +263,7 @@ function Suppliers({ navigationFilters = {} }) {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Suppliers" subtitle="Suppliers / Supplier List" description="Manage vendor contacts and supplier status." onAdd={() => setIsAddOpen(true)} addLabel="Add Supplier" />
+      <PageHeader title="Suppliers" subtitle="Suppliers / Supplier List" description="Manage vendor contacts and supplier status." onAdd={canCreate ? () => setIsAddOpen(true) : undefined} addLabel="Add Supplier" />
 
       <Toolbar
         query={query}
@@ -285,12 +290,12 @@ function Suppliers({ navigationFilters = {} }) {
               label: "Actions",
               render: (r) => (
                 <div className="flex items-center gap-3">
-                  <button onClick={() => setEditingSupplier(r)} className="text-[#5D6B85] hover:text-blue-400 transition-colors" title="Edit Supplier">
+                  {canUpdate && <button onClick={() => setEditingSupplier(r)} className="text-[#5D6B85] hover:text-teal-400 transition-colors" title="Edit Supplier">
                     <Edit2 size={15} />
-                  </button>
-                  <button onClick={() => handleDeleteSupplier(r.id)} className="text-[#5D6B85] hover:text-rose-400 transition-colors" title="Delete Supplier">
+                  </button>}
+                  {canDelete && <button onClick={() => handleDeleteSupplier(r.id)} className="text-[#5D6B85] hover:text-rose-400 transition-colors" title="Delete Supplier">
                     <Trash2 size={15} />
-                  </button>
+                  </button>}
                 </div>
               ),
             },
@@ -337,7 +342,7 @@ function Suppliers({ navigationFilters = {} }) {
       <FormModal
         isOpen={!!editingSupplier}
         onClose={() => setEditingSupplier(null)}
-        title="Update Vendor Credentials"
+        title="Update Supplier"
         subtitle="Update the information below and save your changes."
         footer={
           <>
