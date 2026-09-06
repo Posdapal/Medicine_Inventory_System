@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Build
     env:
-      DEPLOY_TAG: 'latest'
+      DEPLOY_TAG: 'uat'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -37,7 +37,7 @@ jobs:
           dockerfile: backend/Dockerfile
           username: ${{ secrets.USERNAME }}
           password: ${{ secrets.TOKEN }}
-          image: ${{ secrets.USERNAME }}/ccu-medicine-backend
+          image: medicine_inventory_system_backend
           tags: ${{ env.DEPLOY_TAG }}
           buildArgs: DEPLOY_TAG=${{ env.DEPLOY_TAG }}
 
@@ -45,6 +45,8 @@ jobs:
     runs-on: ubuntu-latest
     name: Deploy
     needs: build
+    env:
+      DEPLOY_TAG: 'uat'
     steps:
       - uses: actions/checkout@v4
 
@@ -64,7 +66,7 @@ jobs:
         env:
           REGISTRY_TOKEN: ${{ secrets.TOKEN }}
           REGISTRY_USERNAME: ${{ secrets.USERNAME }}
-          IMAGE_URI: ghcr.io/posdapal/medicine_inventory_system_backend:latest
+          IMAGE_URI: ghcr.io/${{ secrets.USERNAME }}/medicine_inventory_system_backend:${{ env.DEPLOY_TAG }}
           BACKEND_ENV: ${{ secrets.DEVELOP_ENV || secrets.BACKEND_ENV }}
         with:
           host: ${{ secrets.WEB_SERVER_SSH_HOST }}

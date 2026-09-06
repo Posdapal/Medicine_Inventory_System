@@ -37,7 +37,7 @@ jobs:
           dockerfile: frontend/Dockerfile
           username: ${{ secrets.USERNAME }}
           password: ${{ secrets.TOKEN }}
-          image: ghcr.io/posdapal/medicine_inventory_system_frontend
+          image: medicine_inventory_system_frontend
           tags: ${{ env.DEPLOY_TAG }}
           buildArgs: DEPLOY_TAG=${{ env.DEPLOY_TAG }},VITE_API_URL=${{ secrets.VITE_API_URL }}
 
@@ -45,6 +45,8 @@ jobs:
     runs-on: ubuntu-latest
     name: Deploy
     needs: build
+    env:
+      DEPLOY_TAG: 'uat'
     steps:
       - uses: actions/checkout@v4
 
@@ -64,7 +66,7 @@ jobs:
         env:
           REGISTRY_TOKEN: ${{ secrets.TOKEN }}
           REGISTRY_USERNAME: ${{ secrets.USERNAME }}
-          IMAGE_URI: ghcr.io/${{ secrets.USERNAME }}/ccu-medicine-frontend:uat
+          IMAGE_URI: ghcr.io/${{ secrets.USERNAME }}/medicine_inventory_system_frontend:${{ env.DEPLOY_TAG }}
         with:
           host: ${{ secrets.WEB_SERVER_SSH_HOST }}
           username: ${{ secrets.WEB_SERVER_SSH_USER || 'ubuntu' }}
