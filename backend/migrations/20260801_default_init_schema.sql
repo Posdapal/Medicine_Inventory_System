@@ -309,8 +309,8 @@ ON DUPLICATE KEY UPDATE `name` = VALUES(`name`), `status` = 'active';
 
 -- Default admin user: admin@gmail.com / Admin@123
 INSERT INTO `users` (`id`, `role_id`, `full_name`, `username`, `email`, `password`, `status`, `must_change_password`) VALUES
-  (1, 1, 'Admin User', 'admin', 'admin@gmail.com', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'active', 0)
-ON DUPLICATE KEY UPDATE `email` = VALUES(`email`);
+  (1, 1, 'Admin User', 'admin', 'admin@gmail.com', '$2b$12$hMaTLDuUgL11LTVPS5sxoOYE/On.stDxD9vQTq0gu2yrMPmqy1zNG', 'active', 0)
+ON DUPLICATE KEY UPDATE `email` = VALUES(`email`), `password` = VALUES(`password`);
 
 INSERT INTO `categories` (`id`, `name`, `description`, `status`) VALUES
   (1, 'Surgical Equipment', 'Instruments & tools', 'active'),
