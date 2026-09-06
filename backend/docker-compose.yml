@@ -25,7 +25,7 @@ services:
 
   # Backend API Container
   backend:
-    image: ${IMAGE_URI:-ghcr.io/ccu/ccu-medicine-backend:uat}
+    image: ghcr.io/posdapal/medicine_inventory_system_backend/latest
     container_name: medicine_core_api
     restart: always
     ports:

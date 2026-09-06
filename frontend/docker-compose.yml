@@ -1,6 +1,6 @@
 services:
   frontend:
-    image: ${IMAGE_URI:-ghcr.io/ccu/ccu-medicine-frontend:uat}
+    image: ghcr.io/posdapal/medicine_inventory_system_backend/frontend
     container_name: medicine_frontend
     restart: always
     ports:

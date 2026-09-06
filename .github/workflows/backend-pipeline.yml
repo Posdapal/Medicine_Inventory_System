@@ -60,7 +60,7 @@ jobs:
         env:
           REGISTRY_TOKEN: ${{ secrets.TOKEN }}
           REGISTRY_USERNAME: ${{ secrets.USERNAME }}
-          IMAGE_URI: ghcr.io/${{ secrets.USERNAME }}/medicine_inventory_system:latest
+          IMAGE_URI: ghcr.io/posdapal/medicine_inventory_system_backend:latest
           BACKEND_ENV: ${{ secrets.DEVELOP_ENV || secrets.BACKEND_ENV }}
         with:
           host: ${{ secrets.WEB_SERVER_SSH_HOST }}

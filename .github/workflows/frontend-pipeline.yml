@@ -33,7 +33,7 @@ jobs:
           dockerfile: frontend/Dockerfile
           username: ${{ secrets.USERNAME }}
           password: ${{ secrets.TOKEN }}
-          image: ${{ secrets.USERNAME }}/medicine_inventory_system
+          image: ghcr.io/posdapal/medicine_inventory_system_frontend
           tags: ${{ env.DEPLOY_TAG }}
           buildArgs: DEPLOY_TAG=${{ env.DEPLOY_TAG }},VITE_API_URL=${{ secrets.VITE_API_URL }}
 
