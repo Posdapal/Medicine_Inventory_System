@@ -79,4 +79,4 @@ jobs:
             export IMAGE_URI="$(echo "$IMAGE_URI" | tr '[:upper:]' '[:lower:]')"
             docker compose pull
             docker compose up -d --remove-orphans
-            docker image prune -f
+            docker image prune -f || true
