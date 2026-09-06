@@ -9,5 +9,6 @@ router.put('/profile', checkPermission('settings','update'), c.updateProfile);
 router.put('/preferences', checkPermission('settings','update'), c.updatePreferences);
 router.put('/password', c.updatePassword);
 router.put('/two-factor', checkPermission('settings','update'), c.updateTwoFactor);
+router.post('/trigger-telegram', checkPermission('settings','read'), c.triggerTelegramAlert);
 
 module.exports = router;

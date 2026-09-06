@@ -12,6 +12,8 @@ import {
   PackageMinus,
   PackagePlus,
   Save,
+  Send,
+  Loader2,
   ShieldCheck,
   Tag,
   UserCog,
@@ -238,6 +240,33 @@ function Settings() {
   const [passwordForm, setPasswordForm] = useState({ current_password: "", new_password: "", confirm_password: "" });
   const [activity, setActivity] = useState([]);
   const [activityLoading, setActivityLoading] = useState(true);
+  const [sendingTelegram, setSendingTelegram] = useState(false);
+
+  const handleTriggerTelegram = async () => {
+    setSendingTelegram(true);
+    try {
+      const res = await settingsApi.triggerTelegramAlert();
+      Swal.fire({
+        title: "Telegram Alert Sent!",
+        text: res.message || "Summary and urgent batches sent successfully to Telegram.",
+        icon: "success",
+        confirmButtonColor: "#14b8a6",
+        background: "#0f172a",
+        color: "#f1f5f9",
+      });
+    } catch (err) {
+      Swal.fire({
+        title: "Failed to Send Alert",
+        text: err.response?.data?.message || err.message || "Failed to communicate with Telegram API.",
+        icon: "error",
+        confirmButtonColor: "#ef4444",
+        background: "#0f172a",
+        color: "#f1f5f9",
+      });
+    } finally {
+      setSendingTelegram(false);
+    }
+  };
 
   const tabs = [
     { key: "preferences", label: "Preferences", icon: Palette },
@@ -455,6 +484,21 @@ function Settings() {
                         description="Receive urgent inventory alerts by Email."
                         disabled
                       />
+                    </div>
+                    <div className="mt-4 flex items-center justify-between rounded-xl border border-teal-500/20 bg-teal-500/5 p-4">
+                      <div>
+                        <p className="text-sm font-medium text-slate-200">Manual Telegram Alert</p>
+                        <p className="mt-0.5 text-xs text-slate-400">Instantly generate and broadcast the daily expiry summary to Telegram right now.</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleTriggerTelegram}
+                        disabled={sendingTelegram}
+                        className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-600 px-4 py-2.5 text-sm font-semibold text-slate-950 shadow-md transition hover:from-teal-400 hover:to-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {sendingTelegram ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                        {sendingTelegram ? "Sending..." : "Send Alert Now"}
+                      </button>
                     </div>
                   </div>
                 </div>

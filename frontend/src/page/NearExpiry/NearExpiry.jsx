@@ -1,7 +1,6 @@
-// NearExpiry.jsx — Expiry Management > Near Expiry
-// Reflects PRODUCT_BATCHES filtered by expiry_date: batch_number,
-// manufacture_date, expiry_date, available_quantity.
 import { useEffect, useState } from "react";
+import { Send, Loader2 } from "lucide-react";
+import Swal from "sweetalert2";
 import { expiryApi } from "../../api/endpoints";
 import { PageHeader, Badge, Table, Toolbar, ExportGroup, Pagination } from "../../components/ui/Common";
 import { downloadExcel, printTable } from "../../utils/ExportUtils";
@@ -16,6 +15,7 @@ function NearExpiry() {
   const [query, setQuery] = useState("");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sendingTelegram, setSendingTelegram] = useState(false);
   const [error, setError] = useState("");
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, total_pages: 1 });
 
@@ -29,6 +29,47 @@ function NearExpiry() {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSendTelegram = async () => {
+    const confirmation = await Swal.fire({
+      title: "Send Telegram Alert?",
+      text: "This will immediately send the daily expiry summary and urgent batch alerts to the configured Telegram channel.",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Send Alert",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#14b8a6",
+      cancelButtonColor: "#475569",
+      background: "#0f172a",
+      color: "#f1f5f9",
+    });
+
+    if (!confirmation.isConfirmed) return;
+
+    setSendingTelegram(true);
+    try {
+      const res = await expiryApi.triggerTelegramAlert();
+      Swal.fire({
+        title: "Telegram Alert Sent!",
+        text: res.message || `Summary and urgent batches sent successfully.`,
+        icon: "success",
+        confirmButtonColor: "#14b8a6",
+        background: "#0f172a",
+        color: "#f1f5f9",
+      });
+    } catch (err) {
+      Swal.fire({
+        title: "Failed to Send Alert",
+        text: err.response?.data?.message || err.message || "Failed to communicate with Telegram API.",
+        icon: "error",
+        confirmButtonColor: "#ef4444",
+        background: "#0f172a",
+        color: "#f1f5f9",
+      });
+    } finally {
+      setSendingTelegram(false);
     }
   };
 
@@ -48,7 +89,18 @@ function NearExpiry() {
 
   return (
     <div>
-      <PageHeader title="Near Expiry" subtitle="Expiry Management / Near Expiry" description="Track products approaching their expiry date." />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-2">
+        <PageHeader title="Near Expiry" subtitle="Expiry Management / Near Expiry" description="Track products approaching their expiry date." />
+        <button
+          type="button"
+          onClick={handleSendTelegram}
+          disabled={sendingTelegram}
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-600 px-4 py-2.5 text-sm font-semibold text-slate-950 shadow-md transition hover:from-teal-400 hover:to-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {sendingTelegram ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+          {sendingTelegram ? "Sending Telegram..." : "Send Telegram Alert"}
+        </button>
+      </div>
 
       <Toolbar
         query={query}

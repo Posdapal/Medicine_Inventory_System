@@ -6,5 +6,6 @@ router.use(verifyToken);
 
 router.get('/near', checkPermission('expiry', 'read'), c.getNearExpiry);
 router.get('/expired', checkPermission('expiry', 'read'), c.getExpired);
+router.post('/trigger-telegram', checkPermission('expiry', 'read'), c.triggerTelegramAlert);
 
 module.exports = router;
