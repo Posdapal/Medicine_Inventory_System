@@ -10,6 +10,8 @@ const routes = require('./src/routes');
 const { notFound, errorHandler } = require('./src/middleware/errorHandler.middleware');
 const { startExpiryAlertScheduler } = require('./src/schedulers/expiryAlert.scheduler');
 
+const runMigrations = require('./scripts/migrate');
+
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '8mb' }));
@@ -27,7 +29,17 @@ app.use(errorHandler);
 // 3. Fallback safely to 8081 if process.env.PORT fails to load
 const PORT = process.env.PORT || 8081;
 
-app.listen(PORT, () => {
-  console.log(`Server Running on port ${PORT}`);
-  startExpiryAlertScheduler();
-});
+async function startServer() {
+  try {
+    await runMigrations();
+  } catch (err) {
+    console.error('Migration failed on startup:', err);
+  }
+
+  app.listen(PORT, () => {
+    console.log(`Server Running on port ${PORT}`);
+    startExpiryAlertScheduler();
+  });
+}
+
+startServer();
