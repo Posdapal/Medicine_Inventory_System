@@ -4,6 +4,7 @@ import Swal from "sweetalert2";
 import { expiryApi } from "../../api/endpoints";
 import { PageHeader, Badge, Table, Toolbar, ExportGroup, Pagination } from "../../components/ui/Common";
 import { downloadExcel, printTable } from "../../utils/ExportUtils";
+import { formatDate } from "../../utils/dateUtils";
 import { useAuth } from "../../context/AuthContext";
 
 const HEADERS = ["Product", "Batch No.", "Manufacture Date", "Expiry Date", "Days Remaining", "Available Qty"];
@@ -81,7 +82,7 @@ function NearExpiry() {
   useEffect(() => { setPagination((current) => ({ ...current, page: 1 })); }, [query]);
 
   const tableRows = () =>
-    rows.map((r) => [r.product, r.batch_number, r.manufacture_date || "—", r.expiry_date, r.days_remaining, r.available_quantity]);
+    rows.map((r) => [r.product, r.batch_number, formatDate(r.manufacture_date), formatDate(r.expiry_date), r.days_remaining, r.available_quantity]);
 
   const handleExportExcel = () => downloadExcel("near-expiry.xlsx", "Near Expiry", HEADERS, tableRows(), (pagination.page - 1) * pagination.limit);
   const handleExportPdf = () => printTable("Near Expiry Report", HEADERS, tableRows());
@@ -117,8 +118,8 @@ function NearExpiry() {
           columns={[
             { key: "product", label: "Product" },
             { key: "batch_number", label: "Batch No." },
-            { key: "manufacture_date", label: "Manufacture Date", render: (r) => r.manufacture_date || "—" },
-            { key: "expiry_date", label: "Expiry Date" },
+            { key: "manufacture_date", label: "Manufacture Date", render: (r) => formatDate(r.manufacture_date) },
+            { key: "expiry_date", label: "Expiry Date", render: (r) => formatDate(r.expiry_date) },
             { key: "days_remaining", label: "Days Remaining", render: (r) => <Badge tone="warn">{r.days_remaining} days</Badge> },
             { key: "available_quantity", label: "Available Qty" },
           ]}

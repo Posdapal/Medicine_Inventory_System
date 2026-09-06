@@ -6,6 +6,7 @@ import {
   ImportButton, ActionButton, Pagination,
 } from "../../components/ui/Common";
 import { downloadXlsx, downloadXlsxTemplate, parseImportFile } from "../../utils/ExportUtils";
+import { formatDate } from "../../utils/dateUtils";
 import Swal from "sweetalert2";
 import { toast } from "../../utils/toast";
 import { useAuth } from "../../context/AuthContext";
@@ -219,7 +220,7 @@ function StockOut({ navigationFilters = {} }) {
               { key: "quantity", label: "Quantity", render: (r) => <Badge tone="bad">-{r.quantity}</Badge> },
               { key: "reason", label: "Reason", render: (r) => <Badge>{r.reason}</Badge> },
               { key: "reference_number", label: "Reference No.", render: (r) => r.reference_number || "—" },
-              { key: "transaction_date", label: "Transaction Date" },
+              { key: "transaction_date", label: "Transaction Date", render: (r) => formatDate(r.transaction_date) },
               {
                 key: "actions",
                 label: "Actions",

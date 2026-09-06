@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { expiryApi } from "../../api/endpoints";
 import { PageHeader, Badge, Table, Toolbar, ExportGroup, Pagination } from "../../components/ui/Common";
 import { downloadExcel, printTable } from "../../utils/ExportUtils";
+import { formatDate } from "../../utils/dateUtils";
 import { useAuth } from "../../context/AuthContext";
 
 const HEADERS = ["Product", "Batch No.", "Manufacture Date", "Expiry Date", "Days Expired", "Available Qty"];
@@ -39,7 +40,7 @@ function ExpiredProducts() {
   useEffect(() => { setPagination((current) => ({ ...current, page: 1 })); }, [query]);
 
   const tableRows = () =>
-    rows.map((r) => [r.product, r.batch_number, r.manufacture_date || "—", r.expiry_date, r.days_expired, r.available_quantity]);
+    rows.map((r) => [r.product, r.batch_number, formatDate(r.manufacture_date), formatDate(r.expiry_date), r.days_expired, r.available_quantity]);
 
   const handleExportExcel = () => downloadExcel("expired-products.xlsx", "Expired Batches", HEADERS, tableRows(), (pagination.page - 1) * pagination.limit);
   const handleExportPdf = () => printTable("Expired Products Report", HEADERS, tableRows());
@@ -64,8 +65,8 @@ function ExpiredProducts() {
           columns={[
             { key: "product", label: "Product" },
             { key: "batch_number", label: "Batch No." },
-            { key: "manufacture_date", label: "Manufacture Date", render: (r) => r.manufacture_date || "—" },
-            { key: "expiry_date", label: "Expiry Date" },
+            { key: "manufacture_date", label: "Manufacture Date", render: (r) => formatDate(r.manufacture_date) },
+            { key: "expiry_date", label: "Expiry Date", render: (r) => formatDate(r.expiry_date) },
             { key: "days_expired", label: "Days Expired", render: (r) => <Badge tone="bad">{r.days_expired} days</Badge> },
             { key: "available_quantity", label: "Available Qty" },
           ]}

@@ -95,16 +95,26 @@ function ColumnVisibilityControl({ columns, hiddenColumns, setHiddenColumns, vis
   );
 }
 
+function renderCellValue(val) {
+  if (val === null || val === undefined || val === "") return "—";
+  if (typeof val === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(val)) {
+    return val.split("T")[0];
+  }
+  return val;
+}
+
 export function Table({ columns, rows, emptyLabel = "No records match your search.", rowOffset = 0 }) {
   const [hiddenColumns, setHiddenColumns] = useState([]);
   const [toolbarTarget, setToolbarTarget] = useState(null);
-  const rowNumberKey = "__rowNumber";
-  const isRowNumberVisible = !hiddenColumns.includes(rowNumberKey);
-  const visibleColumns = columns.filter((column) => !hiddenColumns.includes(column.key));
+  const rowNumberKey = "__row_number__";
 
   useEffect(() => {
-    setToolbarTarget(document.querySelector("[data-table-column-controls]"));
+    const el = document.getElementById("table-toolbar-portal");
+    if (el) setToolbarTarget(el);
   }, []);
+
+  const visibleColumns = columns.filter((c) => !hiddenColumns.includes(c.key));
+  const isRowNumberVisible = !hiddenColumns.includes(rowNumberKey);
 
   const toggleColumn = (key) => {
     setHiddenColumns((current) => {
@@ -139,7 +149,7 @@ export function Table({ columns, rows, emptyLabel = "No records match your searc
               <tr key={row.id ?? i} className="border-b border-[#1E2A45] last:border-0 hover:bg-white/[0.02] transition-colors">
                 {isRowNumberVisible && <td className="w-16 px-4 py-3 font-medium tabular-nums text-[#8B96AE]">{rowOffset + i + 1}</td>}
                 {visibleColumns.map((c) => (
-                  <td key={c.key} className="px-4 py-3 text-[#D7DEEB]">{c.render ? c.render(row) : row[c.key]}</td>
+                  <td key={c.key} className="px-4 py-3 text-[#D7DEEB]">{c.render ? c.render(row) : renderCellValue(row[c.key])}</td>
                 ))}
               </tr>
             ))}
