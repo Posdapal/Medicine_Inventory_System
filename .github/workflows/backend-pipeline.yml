@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Build
     env:
-      DEPLOY_TAG: 'uat'
+      DEPLOY_TAG: 'latest'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -35,8 +35,8 @@ jobs:
           registry: ghcr.io
           directory: backend
           dockerfile: backend/Dockerfile
-          username: ${{ secrets.USERNAME }}
-          password: ${{ secrets.TOKEN }}
+          username: ${{ secrets.USERNAME || github.actor }}
+          password: ${{ secrets.TOKEN || secrets.GITHUB_TOKEN }}
           image: medicine_inventory_system_backend
           tags: ${{ env.DEPLOY_TAG }}
           buildArgs: DEPLOY_TAG=${{ env.DEPLOY_TAG }}
@@ -46,7 +46,7 @@ jobs:
     name: Deploy
     needs: build
     env:
-      DEPLOY_TAG: 'uat'
+      DEPLOY_TAG: 'latest'
     steps:
       - uses: actions/checkout@v4
 
@@ -64,9 +64,9 @@ jobs:
       - name: Deploy with Docker Compose via SSH
         uses: appleboy/ssh-action@v1.0.3
         env:
-          REGISTRY_TOKEN: ${{ secrets.TOKEN }}
-          REGISTRY_USERNAME: ${{ secrets.USERNAME }}
-          IMAGE_URI: ghcr.io/${{ secrets.USERNAME }}/medicine_inventory_system_backend:${{ env.DEPLOY_TAG }}
+          REGISTRY_TOKEN: ${{ secrets.TOKEN || secrets.GITHUB_TOKEN }}
+          REGISTRY_USERNAME: ${{ secrets.USERNAME || github.actor }}
+          IMAGE_URI: ghcr.io/${{ secrets.USERNAME || github.actor }}/medicine_inventory_system_backend:${{ env.DEPLOY_TAG }}
           BACKEND_ENV: ${{ secrets.DEVELOP_ENV || secrets.BACKEND_ENV }}
         with:
           host: ${{ secrets.WEB_SERVER_SSH_HOST }}

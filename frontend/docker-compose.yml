@@ -1,6 +1,7 @@
+name: medicine_inventory_frontend
 services:
   frontend:
-    image: ghcr.io/posdapal/medicine_inventory_system_backend/frontend
+    image: ${IMAGE_URI:-ghcr.io/posdapal/medicine_inventory_system_frontend:latest}
     container_name: medicine_frontend
     restart: always
     ports:
