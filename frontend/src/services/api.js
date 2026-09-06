@@ -3,8 +3,17 @@ import axios from "axios";
 export const TOKEN_KEY = "medicine_inventory_token";
 export const USER_KEY = "medicine_inventory_user";
 
+const sanitizeBaseUrl = (rawUrl) => {
+  let url = (rawUrl || "").trim();
+  if (url.startsWith("VITE_API_URL=")) {
+    url = url.replace(/^VITE_API_URL=/, "").trim();
+  }
+  url = url.replace(/\/+$/, "");
+  return url || "http://localhost:8081/api";
+};
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:8081/api",
+  baseURL: sanitizeBaseUrl(import.meta.env.VITE_API_URL),
   headers: { "Content-Type": "application/json" },
 });
 
