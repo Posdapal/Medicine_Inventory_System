@@ -1,0 +1,7 @@
+services:
+  frontend:
+    image: ${IMAGE_URI:-ghcr.io/ccu/ccu-medicine-frontend:uat}
+    container_name: medicine_frontend
+    restart: always
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
