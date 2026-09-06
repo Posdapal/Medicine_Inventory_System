@@ -78,7 +78,7 @@ jobs:
             cd ~/app/backend
             echo "$BACKEND_ENV" > .env
             echo "$REGISTRY_TOKEN" | docker login ghcr.io -u "$REGISTRY_USERNAME" --password-stdin
-            export IMAGE_URI="$IMAGE_URI"
+            export IMAGE_URI="$(echo "$IMAGE_URI" | tr '[:upper:]' '[:lower:]')"
             docker compose pull
             docker compose up -d --remove-orphans
             docker image prune -f
