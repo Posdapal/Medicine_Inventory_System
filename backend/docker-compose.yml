@@ -27,7 +27,7 @@ services:
     container_name: medicine_core_api
     restart: always
     ports:
-      - "${PORT:-8081}:8081"
+      - "127.0.0.1${PORT:-8081}:8081"
     env_file:
       - .env
     environment:
