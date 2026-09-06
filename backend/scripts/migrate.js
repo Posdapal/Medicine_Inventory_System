@@ -97,56 +97,61 @@ async function runMigrations(maxRetries = 10, delayMs = 3000) {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
 
-    // 3. Verify if users table actually exists; if missing, reset initial migration state
-    const [tables] = await connection.query("SHOW TABLES LIKE 'users'");
-    if (tables.length === 0) {
-      console.log('ℹ️ Table `users` not found. Resetting _migrations tracking for base schema.');
-      await connection.query("DELETE FROM _migrations WHERE name = '20260801_default_init_schema.sql'");
+    // 3. Load all applied migrations
+    const [appliedRows] = await connection.query('SELECT name FROM _migrations');
+    const appliedSet = new Set(appliedRows.map((r) => r.name));
+
+    // 4. Find migration files in backend/migrations
+    const migrationsDir = path.join(__dirname, '..', 'migrations');
+    if (!fs.existsSync(migrationsDir)) {
+      console.log('✨ No migrations directory found.');
+      return;
     }
 
-    // 4. Apply all migration files from migrations/ in alphabetical order
-    const migrationsDir = path.join(__dirname, '..', 'migrations');
-    if (fs.existsSync(migrationsDir)) {
-      const files = fs.readdirSync(migrationsDir).filter((f) => f.endsWith('.sql')).sort();
-      for (const file of files) {
-        const [rows] = await connection.query('SELECT name FROM _migrations WHERE name = ?', [file]);
-        if (rows.length === 0) {
-          console.log(`📄 Applying migration: ${file}...`);
-          const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
-          const statements = splitSqlStatements(sql);
+    const allFiles = fs.readdirSync(migrationsDir).filter((f) => f.endsWith('.sql')).sort();
+    const pendingFiles = allFiles.filter((f) => !appliedSet.has(f));
 
-          let hasFatalError = false;
-          for (const statement of statements) {
-            try {
-              await connection.query(statement);
-            } catch (stmtErr) {
-              if (
-                stmtErr.code === 'ER_TABLE_EXISTS_ERROR' ||
-                stmtErr.code === 'ER_DUP_FIELDNAME' ||
-                stmtErr.code === 'ER_DUP_KEYNAME' ||
-                stmtErr.code === 'ER_DUP_ENTRY'
-              ) {
-                console.warn(`  ↳ Note: ${stmtErr.message}`);
-              } else {
-                console.error(`  ↳ Error executing statement: ${stmtErr.message}`);
-                hasFatalError = true;
-              }
-            }
-          }
+    if (pendingFiles.length === 0) {
+      console.log('✨ Database schema is up to date (0 pending migrations).');
+      return;
+    }
 
-          if (!hasFatalError) {
-            await connection.query('INSERT INTO _migrations (name) VALUES (?)', [file]);
-            console.log(`✅ Applied: ${file}`);
+    console.log(`🚀 Found ${pendingFiles.length} new migration(s) to apply...`);
+
+    for (const file of pendingFiles) {
+      console.log(`📄 Applying migration: ${file}...`);
+      const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
+      const statements = splitSqlStatements(sql);
+
+      let hasFatalError = false;
+      for (const statement of statements) {
+        try {
+          await connection.query(statement);
+        } catch (stmtErr) {
+          if (
+            stmtErr.code === 'ER_TABLE_EXISTS_ERROR' ||
+            stmtErr.code === 'ER_DUP_FIELDNAME' ||
+            stmtErr.code === 'ER_DUP_KEYNAME' ||
+            stmtErr.code === 'ER_DUP_ENTRY'
+          ) {
+            console.warn(`  ↳ Note: ${stmtErr.message}`);
           } else {
-            console.warn(`⚠️ Migration ${file} completed with errors; will re-evaluate on next startup.`);
+            console.error(`  ↳ Error executing statement in ${file}: ${stmtErr.message}`);
+            hasFatalError = true;
           }
-        } else {
-          console.log(`⏩ Skipping already applied: ${file}`);
         }
+      }
+
+      if (!hasFatalError) {
+        await connection.query('INSERT INTO _migrations (name) VALUES (?)', [file]);
+        console.log(`✅ Applied: ${file}`);
+      } else {
+        console.warn(`⚠️ Migration ${file} completed with errors; not marked in _migrations.`);
+        throw new Error(`Migration ${file} failed`);
       }
     }
 
-    console.log('🎉 Database migrations completed successfully.');
+    console.log('🎉 All new database migrations applied successfully.');
   } catch (error) {
     console.error('❌ Database migration error:', error.message);
     throw error;
