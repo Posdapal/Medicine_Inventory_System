@@ -1,4 +1,5 @@
-const { queryPage, ok, asyncHandler } = require('../utils/helper');
+const { queryPage, ok, fail, asyncHandler } = require('../utils/helper');
+const { sendDailyExpirySummary } = require('../services/telegramExpiryAlert.service');
 
 // GET /api/expiry/near?search=
 const getNearExpiry = asyncHandler(async (req, res) => {
@@ -34,4 +35,20 @@ const getExpired = asyncHandler(async (req, res) => {
   return ok(res, rows);
 });
 
-module.exports = { getNearExpiry, getExpired };
+// POST /api/expiry/trigger-telegram
+const triggerTelegramAlert = asyncHandler(async (req, res) => {
+  if (!process.env.TELEGRAM_BOT_TOKEN || !process.env.TELEGRAM_CHAT_ID) {
+    return fail(res, 'Telegram credentials (TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID) are not configured in .env', 400);
+  }
+
+  try {
+    const result = await sendDailyExpirySummary();
+    return ok(res, result, `Telegram expiry alert sent successfully (${result.total} urgent batch${result.total === 1 ? '' : 'es'}).`);
+  } catch (error) {
+    console.error('Manual Telegram alert error:', error);
+    return fail(res, `Failed to send Telegram alert: ${error.message}`, 500);
+  }
+});
+
+module.exports = { getNearExpiry, getExpired, triggerTelegramAlert };
+

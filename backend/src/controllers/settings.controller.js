@@ -68,4 +68,21 @@ const updateTwoFactor = asyncHandler(async (req, res) => {
   return ok(res, null, 'Two-factor setting updated');
 });
 
-module.exports = { getMySettings, updateProfile, updatePreferences, updatePassword, updateTwoFactor };
+// POST /api/settings/trigger-telegram
+const triggerTelegramAlert = asyncHandler(async (req, res) => {
+  const { sendDailyExpirySummary } = require('../services/telegramExpiryAlert.service');
+  if (!process.env.TELEGRAM_BOT_TOKEN || !process.env.TELEGRAM_CHAT_ID) {
+    return fail(res, 'Telegram credentials (TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID) are not configured in .env', 400);
+  }
+
+  try {
+    const result = await sendDailyExpirySummary();
+    return ok(res, result, `Telegram expiry alert sent successfully (${result.total} urgent batch${result.total === 1 ? '' : 'es'}).`);
+  } catch (error) {
+    console.error('Manual Telegram alert error:', error);
+    return fail(res, `Failed to send Telegram alert: ${error.message}`, 500);
+  }
+});
+
+module.exports = { getMySettings, updateProfile, updatePreferences, updatePassword, updateTwoFactor, triggerTelegramAlert };
+

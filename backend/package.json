@@ -5,6 +5,7 @@
   "main": "server.js",
   "scripts": {
     "test": "jest",
+    "migrate": "node scripts/migrate.js",
     "migrate:permission-actions": "node scripts/migrate-permission-file-actions.js",
     "migrate:roles": "node scripts/migrate-role-management.js",
     "migrate:remove-staff": "node scripts/migrate-remove-staff-role.js",

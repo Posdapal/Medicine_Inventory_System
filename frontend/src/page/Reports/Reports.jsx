@@ -3,6 +3,7 @@ import { Check, ChevronDown, Download, FileSpreadsheet } from "lucide-react";
 import { reportsApi } from "../../api/endpoints";
 import { Card, FormDatePicker, PageHeader, Table } from "../../components/ui/Common";
 import { downloadExcel, downloadXlsx } from "../../utils/ExportUtils";
+import { formatDate } from "../../utils/dateUtils";
 import { toast } from "../../utils/toast";
 import { useAuth } from "../../context/AuthContext";
 
@@ -48,7 +49,9 @@ function ReportTypeSelect({ value, onChange }) {
 
 function displayValue(value, key) {
   if (value === null || value === undefined || value === "") return "—";
-  if (key.includes("date") && typeof value === "string") return value.slice(0, 10);
+  if (key.includes("date") || key === "created_at" || key === "expiry_date" || key === "manufacture_date" || key === "transaction_date") {
+    return formatDate(value);
+  }
   if (key === "unit_price") return `$${Number(value).toFixed(2)}`;
   if (["status", "stock_status", "movement_type"].includes(key)) {
     return String(value).replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());

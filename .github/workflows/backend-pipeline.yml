@@ -1,0 +1,84 @@
+name: Medicine Backend CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-pipeline.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Build
+    env:
+      DEPLOY_TAG: 'latest'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create .env file
+        working-directory: ./backend
+        run: echo "${{ secrets.DEVELOP_ENV || secrets.BACKEND_ENV }}" > .env
+
+      - name: Build and Push Docker Image
+        uses: mr-smithers-excellent/docker-build-push@v6.3
+        with:
+          registry: ghcr.io
+          directory: backend
+          dockerfile: backend/Dockerfile
+          username: ${{ secrets.USERNAME || github.actor }}
+          password: ${{ secrets.TOKEN || secrets.GITHUB_TOKEN }}
+          image: medicine_inventory_system_backend
+          tags: ${{ env.DEPLOY_TAG }}
+          buildArgs: DEPLOY_TAG=${{ env.DEPLOY_TAG }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    name: Deploy
+    needs: build
+    env:
+      DEPLOY_TAG: 'latest'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Copy Docker Compose to Server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.WEB_SERVER_SSH_HOST }}
+          username: ${{ secrets.WEB_SERVER_SSH_USER || 'ubuntu' }}
+          key: ${{ secrets.WEB_SERVER_SSH_PRIVATE_KEY }}
+          port: ${{ secrets.WEB_SERVER_SSH_PORT || 22 }}
+          source: "backend/docker-compose.yml"
+          target: "~/app/backend"
+          strip_components: 1
+
+      - name: Deploy with Docker Compose via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          REGISTRY_TOKEN: ${{ secrets.TOKEN || secrets.GITHUB_TOKEN }}
+          REGISTRY_USERNAME: ${{ secrets.USERNAME || github.actor }}
+          IMAGE_URI: ghcr.io/${{ secrets.USERNAME || github.actor }}/medicine_inventory_system_backend:${{ env.DEPLOY_TAG }}
+          BACKEND_ENV: ${{ secrets.DEVELOP_ENV || secrets.BACKEND_ENV }}
+        with:
+          host: ${{ secrets.WEB_SERVER_SSH_HOST }}
+          username: ${{ secrets.WEB_SERVER_SSH_USER || 'ubuntu' }}
+          key: ${{ secrets.WEB_SERVER_SSH_PRIVATE_KEY }}
+          port: ${{ secrets.WEB_SERVER_SSH_PORT || 22 }}
+          envs: REGISTRY_TOKEN,REGISTRY_USERNAME,IMAGE_URI,BACKEND_ENV
+          script: |
+            cd ~/app/backend
+            echo "$BACKEND_ENV" > .env
+            echo "$REGISTRY_TOKEN" | docker login ghcr.io -u "$REGISTRY_USERNAME" --password-stdin
+            export IMAGE_URI="$(echo "$IMAGE_URI" | tr '[:upper:]' '[:lower:]')"
+            docker compose pull
+            docker compose up -d --remove-orphans
+            docker image prune -f || true

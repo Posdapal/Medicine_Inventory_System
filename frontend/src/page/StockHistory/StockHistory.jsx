@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { stockApi } from "../../api/endpoints";
 import { PageHeader, Badge, Table, Toolbar, ExportGroup, Pagination } from "../../components/ui/Common";
 import { downloadExcel, printTable } from "../../utils/ExportUtils";
+import { formatDate } from "../../utils/dateUtils";
 import { useAuth } from "../../context/AuthContext";
 
 const HEADERS = ["Product", "Batch No.", "Movement Type", "Qty Before", "Movement Qty", "Qty After", "Date"];
@@ -46,7 +47,7 @@ function StockHistory() {
   useEffect(() => { setPagination((current) => ({ ...current, page: 1 })); }, [query]);
 
   const tableRows = () =>
-    rows.map((r) => [r.product, r.batch_number || "—", r.movement_type, r.quantity_before, r.movement_quantity, r.quantity_after, r.date]);
+    rows.map((r) => [r.product, r.batch_number || "—", r.movement_type, r.quantity_before, r.movement_quantity, r.quantity_after, formatDate(r.date)]);
 
   const handleExportExcel = () => downloadExcel("stock-history.xlsx", "Stock History", HEADERS, tableRows(), (pagination.page - 1) * pagination.limit);
   const handleExportPdf = () => printTable("Stock History Report", HEADERS, tableRows());
@@ -75,7 +76,7 @@ function StockHistory() {
             { key: "quantity_before", label: "Qty Before" },
             { key: "movement_quantity", label: "Movement Qty" },
             { key: "quantity_after", label: "Qty After" },
-            { key: "date", label: "Date" },
+            { key: "date", label: "Date", render: (r) => formatDate(r.date) },
           ]}
           rows={rows}
           rowOffset={(pagination.page - 1) * pagination.limit}

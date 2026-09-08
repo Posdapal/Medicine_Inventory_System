@@ -88,6 +88,7 @@ export const stockApi = {
 export const expiryApi = {
   nearExpiry: (params) => axiosClient.get("/expiry/near", { params }),
   expired: (params) => axiosClient.get("/expiry/expired", { params }),
+  triggerTelegramAlert: () => axiosClient.post("/expiry/trigger-telegram"),
 };
 
 export const reportsApi = {
@@ -103,7 +104,8 @@ export const settingsApi = {
   updatePreferences: (data) => axiosClient.put("/settings/preferences", data),
   updatePassword: (data) => axiosClient.put("/settings/password", data, { skipToast: true }),
   updateTwoFactor: (enabled) => axiosClient.put("/settings/two-factor", { enabled }),
-  getActivityLog: () => api.get("/settings/activity-log"), // add this
+  triggerTelegramAlert: () => axiosClient.post("/settings/trigger-telegram"),
+  getActivityLog: () => axiosClient.get("/settings/activity-log"),
 };
 
 // Add this export to your existing api/endpoints.js (next to usersApi)

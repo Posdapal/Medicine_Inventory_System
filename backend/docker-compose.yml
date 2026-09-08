@@ -1,0 +1,49 @@
+name: medicine_inventory_management
+services:
+  # MySQL Database Container
+  mysql:
+    image: mysql:8.0
+    container_name: medicine_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${DB_NAME:-medicine_inventory}
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - medicine_network
+
+  # Backend API Container
+  backend:
+    image: ${IMAGE_URI:-ghcr.io/posdapal/medicine_inventory_system_backend:latest}
+    container_name: medicine_core_api
+    restart: always
+    ports:
+      - "127.0.0.1:${PORT:-8081}:8081"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      DB_HOST: mysql
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - medicine_network
+
+volumes:
+  mysql_data:
+    name: medicine_mysql_data
+
+networks:
+  medicine_network:
+    name: medicine_network
+    driver: bridge

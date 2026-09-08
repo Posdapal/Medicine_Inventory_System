@@ -3,10 +3,18 @@ import { toast } from "../utils/toast";
 
 // Adjust this to wherever your Express API is running.
 // Vite:  VITE_API_URL=http://localhost:8081/api  (in a .env file, exposed via import.meta.env)
-// CRA:   REACT_APP_API_URL=http://localhost:8081/api  (exposed via process.env)
-const API_BASE_URL =
-  (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_URL) ||
-  "http://localhost:8081/api";
+const sanitizeBaseUrl = (rawUrl) => {
+  let url = (rawUrl || "").trim();
+  if (url.startsWith("VITE_API_URL=")) {
+    url = url.replace(/^VITE_API_URL=/, "").trim();
+  }
+  url = url.replace(/\/+$/, "");
+  return url || "http://localhost:8081/api";
+};
+
+const API_BASE_URL = sanitizeBaseUrl(
+  typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_URL
+);
 
 const TOKEN_KEY = "medicine_inventory_token";
 

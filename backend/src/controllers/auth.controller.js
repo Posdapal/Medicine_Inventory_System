@@ -32,12 +32,15 @@ const USER_WITH_ROLE_SELECT = `
 
 // POST /api/auth/login
 const login = asyncHandler(async (req, res) => {
-  const email = String(req.body.email || '').trim().toLowerCase();
+  const identifier = String(req.body.email || req.body.username || '').trim().toLowerCase();
   const password = String(req.body.password || '');
 
-  if (!email || !password) return fail(res, 'Email and password are required', 400);
+  if (!identifier || !password) return fail(res, 'Email/username and password are required', 400);
 
-  const rows = await query(`${USER_WITH_ROLE_SELECT} WHERE LOWER(u.email) = ? LIMIT 1`, [email]);
+  const rows = await query(
+    `${USER_WITH_ROLE_SELECT} WHERE LOWER(u.email) = ? OR LOWER(u.username) = ? LIMIT 1`,
+    [identifier, identifier]
+  );
   const user = rows[0];
   if (!user || !(await bcrypt.compare(password, user.password))) {
     return fail(res, 'Invalid email or password', 401);
