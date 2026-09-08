@@ -1,6 +1,6 @@
-require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const mysql = require('mysql2/promise');
 
 function splitSqlStatements(sql) {
@@ -54,7 +54,7 @@ async function runMigrations(maxRetries = 10, delayMs = 3000) {
 
   const host = process.env.DB_HOST || 'localhost';
   const user = process.env.DB_USER || 'root';
-  const password = process.env.DB_PASSWORD || 'rootpassword';
+  const password = process.env.DB_PASSWORD ?? 'rootpassword';
   const database = process.env.DB_NAME || 'medicine_inventory';
   const port = Number(process.env.DB_PORT) || 3306;
 

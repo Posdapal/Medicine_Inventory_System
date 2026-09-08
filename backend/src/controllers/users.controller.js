@@ -85,7 +85,7 @@ const remove = asyncHandler(async (req, res) => {
 // GET /api/users/:id/profile
 // This is the query that was previously failing with
 // ER_NO_SUCH_TABLE 'medicine_inventoryup.user_settings'. It now works because
-// migrations/2026_09_03_000001_create_user_settings_table.sql creates the
+// migrations/20260908_create_user_settings.sql creates the
 // table (user_id UNIQUE + FK to users.id) and backfills one row per existing
 // user. The LEFT JOIN + COALESCE below is kept anyway so the endpoint stays
 // correct even for an edge case where a settings row is somehow missing
