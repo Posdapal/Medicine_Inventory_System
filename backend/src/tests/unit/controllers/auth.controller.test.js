@@ -1,10 +1,10 @@
-jest.mock('../../../src/config/db', () => require('../../mocks/db.mock'));
+jest.mock('../../../../src/config/db', () => require('../../mocks/db.mock'));
 
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const request = require('supertest');
-const db = require('../../../src/config/db');
-const createApp = require('../../../src/app');
+const db = require('../../../../src/config/db');
+const createApp = require('../../../../server');
 
 const app = createApp();
 

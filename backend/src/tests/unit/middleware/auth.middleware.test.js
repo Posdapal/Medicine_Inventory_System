@@ -1,5 +1,7 @@
+jest.mock('../../../../src/config/db', () => require('../../mocks/db.mock'));
+
 const jwt = require('jsonwebtoken');
-const { verifyToken, requireAdmin } = require('../../../src/middleware/auth.middleware');
+const { verifyToken, requireAdmin } = require('../../../../src/Middleware/auth.middleware');
 
 // The middleware reads process.env.JWT_SECRET, so pin it for the test run.
 beforeAll(() => {
@@ -68,7 +70,7 @@ describe('auth.middleware verifyToken', () => {
   });
 
   it('calls next() and attaches the decoded payload to req.user for a valid token', () => {
-    const payload = { id: 7, email: 'admin@clinic.local', role: 'admin', full_name: 'Admin User' };
+    const payload = { id: 7, email: 'admin@clinic.local', role: 'administrator', full_name: 'Admin User' };
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' });
     const req = { headers: { authorization: `Bearer ${token}` } };
     const res = mockRes();
@@ -108,8 +110,8 @@ describe('auth.middleware requireAdmin', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('calls next() for role = "admin"', () => {
-    const req = { user: { role: 'admin' } };
+  it('calls next() for role = "administrator"', () => {
+    const req = { user: { role: 'administrator' } };
     const res = mockRes();
     const next = jest.fn();
 

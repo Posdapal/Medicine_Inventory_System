@@ -1,6 +1,6 @@
-jest.mock('../../../src/config/db', () => require('../../mocks/db.mock'));
+jest.mock('../../../../src/config/db', () => require('../../mocks/db.mock'));
 
-const { ok, fail, asyncHandler } = require('../../../src/utils/helper');
+const { ok, fail, asyncHandler } = require('../../../../src/utils/helper');
 
 function mockRes() {
   const res = {};

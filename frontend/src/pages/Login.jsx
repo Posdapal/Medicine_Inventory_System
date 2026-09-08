@@ -23,7 +23,7 @@ export default function Login() {
     event.preventDefault();
 
     const nextErrors = {};
-    if (!email.trim()) nextErrors.username = "Username is required";
+    if (!email.trim()) nextErrors.username = "Email is required";
     if (!password) nextErrors.password = "Password is required";
     else if (password.length < 8) nextErrors.password = "Password must be at least 8 characters";
 
