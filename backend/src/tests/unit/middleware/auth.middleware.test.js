@@ -1,7 +1,7 @@
 jest.mock('../../../../src/config/db', () => require('../../mocks/db.mock'));
 
 const jwt = require('jsonwebtoken');
-const { verifyToken, requireAdmin } = require('../../../../src/Middleware/auth.middleware');
+const { verifyToken, requireAdmin } = require('../../../../src/middleware/auth.middleware');
 
 // The middleware reads process.env.JWT_SECRET, so pin it for the test run.
 beforeAll(() => {

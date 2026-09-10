@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const request = require('supertest');
 const db = require('../../../../src/config/db');
-const createApp = require('../../../../server');
+const createApp = require('../../mocks/app');
 
 const app = createApp();
 
@@ -33,7 +33,7 @@ describe('POST /api/auth/login', () => {
   it('rejects an inactive account with 403', async () => {
     const hash = await bcrypt.hash('admin123', 10);
     db.__setQueryResult([
-      { id: 1, email: 'admin@clinic.local', password: hash, status: 'inactive', role_name: 'admin' },
+      { id: 1, email: 'admin@clinic.local', password: hash, status: 'inactive', role: 'Administrator' },
     ]);
 
     const res = await request(app)
@@ -47,7 +47,7 @@ describe('POST /api/auth/login', () => {
   it('rejects the correct email with the wrong password', async () => {
     const hash = await bcrypt.hash('admin123', 10);
     db.__setQueryResult([
-      { id: 1, email: 'admin@clinic.local', password: hash, status: 'active', role_name: 'admin' },
+      { id: 1, email: 'admin@clinic.local', password: hash, status: 'active', role: 'Administrator' },
     ]);
 
     const res = await request(app)
@@ -67,7 +67,7 @@ describe('POST /api/auth/login', () => {
         email: 'admin@clinic.local',
         password: hash,
         status: 'active',
-        role_name: 'admin',
+        role: 'Administrator',
       },
     ]);
 
@@ -81,7 +81,7 @@ describe('POST /api/auth/login', () => {
     expect(res.body.data.user.email).toBe('admin@clinic.local');
 
     const decoded = jwt.verify(res.body.data.token, process.env.JWT_SECRET);
-    expect(decoded).toMatchObject({ id: 1, email: 'admin@clinic.local', role: 'admin' });
+    expect(decoded).toMatchObject({ id: 1, email: 'admin@clinic.local', role: 'administrator' });
   });
 
   it('the seeded bcrypt hash in clinic_erp.sql actually matches "admin123"', async () => {
@@ -101,10 +101,10 @@ describe('GET /api/auth/me', () => {
 
   it('returns the current user for a valid token', async () => {
     db.__setQueryResult([
-      { id: 1, full_name: 'Admin User', username: 'admin', email: 'admin@clinic.local', status: 'active', role_name: 'admin' },
+      { id: 1, full_name: 'Admin User', username: 'admin', email: 'admin@clinic.local', status: 'active', role: 'Administrator' },
     ]);
 
-    const token = jwt.sign({ id: 1, email: 'admin@clinic.local', role: 'admin' }, process.env.JWT_SECRET);
+    const token = jwt.sign({ id: 1, email: 'admin@clinic.local', role: 'administrator' }, process.env.JWT_SECRET);
 
     const res = await request(app).get('/api/auth/me').set('Authorization', `Bearer ${token}`);
 
@@ -115,10 +115,20 @@ describe('GET /api/auth/me', () => {
   it('returns 404 if the token is valid but the user no longer exists', async () => {
     db.__setQueryResult([]);
 
-    const token = jwt.sign({ id: 999, email: 'ghost@clinic.local', role: 'admin' }, process.env.JWT_SECRET);
+    const token = jwt.sign({ id: 999, email: 'ghost@clinic.local', role: 'administrator' }, process.env.JWT_SECRET);
 
     const res = await request(app).get('/api/auth/me').set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(404);
   });
+});
+
+it('documents that login currently loses the forced password change flag in its JWT', async () => {
+  const hash = await bcrypt.hash('admin123', 10);
+  db.__setQueryResult([{ id: 1, full_name: 'Test User', email: 'test@example.com', password: hash, status: 'active', role: 'Pharmacist', must_change_password: 1 }]);
+  const res = await request(app).post('/api/auth/login').send({ email: 'test@example.com', password: 'admin123' });
+  expect(res.status).toBe(200);
+  expect(res.body.data.user.mustChangePassword).toBe(true);
+  // Characterizes a reported defect; the expected secure behavior is true in both places.
+  expect(jwt.verify(res.body.data.token, process.env.JWT_SECRET).mustChangePassword).toBe(false);
 });

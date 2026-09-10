@@ -2,7 +2,7 @@ jest.mock('../../../../src/config/db', () => require('../../mocks/db.mock'));
 
 const request = require('supertest');
 const db = require('../../../../src/config/db');
-const createApp = require('../../../../server');
+const createApp = require('../../mocks/app');
 
 const app = createApp();
 
@@ -34,13 +34,21 @@ describe('GET /api/categories', () => {
   });
 
   it('returns 500 with the driver error message if the query fails', async () => {
-    db.__setQueryError(new Error('ER_NO_SUCH_TABLE: categories'));
+    const error = new Error('ER_NO_SUCH_TABLE: categories');
+    const errorLog = jest.spyOn(console, 'error').mockImplementation(() => {});
+    db.__setQueryError(error);
 
-    const res = await request(app).get('/api/categories');
+    try {
+      const res = await request(app).get('/api/categories');
 
-    expect(res.status).toBe(500);
-    expect(res.body.success).toBe(false);
-    expect(res.body.message).toMatch(/ER_NO_SUCH_TABLE/);
+      expect(res.status).toBe(500);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toMatch(/ER_NO_SUCH_TABLE/);
+      expect(errorLog).toHaveBeenCalledTimes(1);
+      expect(errorLog).toHaveBeenCalledWith(error);
+    } finally {
+      errorLog.mockRestore();
+    }
   });
 });
 

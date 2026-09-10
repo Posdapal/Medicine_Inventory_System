@@ -49,6 +49,39 @@ npm start
 Run the frontend
 npm run dev
 
+## Run Backend Unit Tests
+
+From the project root, install the backend dependencies:
+
+```sh
+cd backend
+npm install --ignore-scripts
+```
+
+Run all unit tests:
+
+```sh
+npm test -- --runInBand
+```
+
+Run all unit tests with coverage:
+
+```sh
+npm test -- --runInBand --coverage
+```
+
+Open `backend/coverage/index.html` to view the coverage report. Jest requires at least 75% coverage for statements, branches, functions, and lines.
+
+Run a specific test file:
+
+```sh
+npm test -- --runInBand src/tests/unit/controllers/stock.controller.test.js
+```
+
+Tests mock the database, Telegram API, and mail transport. You do not need to start the backend server or connect to a production database.
+
+See [backend test documentation](backend/src/tests/README.md) for coverage scope and additional details.
+
 ## Default Admin Account
 
 Use this account to test the system:
